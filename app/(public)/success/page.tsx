@@ -112,7 +112,7 @@ function SuccessContent() {
           description: "QR code copied to clipboard",
         });
         setTimeout(() => setCopied(false), 2000);
-      } else {
+      } else if (navigator.clipboard?.writeText) {
         // Fallback: copy the QR code text
         await navigator.clipboard.writeText(qrCode);
         setCopied(true);
