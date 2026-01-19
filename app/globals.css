@@ -1,0 +1,120 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 0 0% 100%;
+    --foreground: 0 0% 13%;
+    --card: 0 0% 100%;
+    --card-foreground: 0 0% 13%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 0 0% 13%;
+    --primary: 0 100% 45%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 0 0% 96%;
+    --secondary-foreground: 0 0% 13%;
+    --muted: 0 0% 96%;
+    --muted-foreground: 0 0% 45%;
+    --accent: 0 0% 96%;
+    --accent-foreground: 0 0% 13%;
+    --destructive: 0 84% 60%;
+    --destructive-foreground: 0 0% 100%;
+    --border: 0 0% 90%;
+    --input: 0 0% 90%;
+    --ring: 0 100% 45%;
+    --radius: 0.5rem;
+
+    /* Vodafone Brand Colors as CSS Variables */
+    --vodafone-red: #E60000;
+    --vodafone-dark-red: #820000;
+    --vodafone-digital-red: #FF0000;
+    --vodafone-grey: #4A4D4E;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply bg-background text-foreground;
+  }
+}
+
+/* Vodafone Gradient Backgrounds */
+.bg-vodafone-gradient {
+  background: linear-gradient(135deg, #820000 0%, #E60000 50%, #FF0000 100%);
+}
+
+.bg-vodafone-gradient-subtle {
+  background: linear-gradient(135deg, #E60000 0%, #FF0000 100%);
+}
+
+/* Status Badge Colors */
+.badge-registered {
+  @apply bg-secondary-aqua-blue text-white;
+}
+
+.badge-checked-in {
+  @apply bg-secondary-spring-green text-white;
+}
+
+.badge-cancelled {
+  @apply bg-vodafone-grey text-white;
+}
+
+/* Custom Scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: #f1f1f1;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #c1c1c1;
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #a1a1a1;
+}
+
+/* RTL Support */
+html[dir="rtl"] {
+  font-family: var(--font-arabic), var(--font-inter), system-ui, sans-serif;
+}
+
+/* RTL-aware scrollbar position */
+html[dir="rtl"] ::-webkit-scrollbar {
+  direction: rtl;
+}
+
+/* Auto-fill highlight animation */
+.animate-autofill {
+  animation: highlight-fill 1s ease-out;
+}
+
+/* Print styles for success page */
+@media print {
+  .no-print {
+    display: none !important;
+  }
+
+  .print-only {
+    display: block !important;
+  }
+
+  body {
+    background: white !important;
+  }
+
+  .bg-vodafone-gradient {
+    background: #E60000 !important;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+}

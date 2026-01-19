@@ -1,0 +1,244 @@
+import { NextRequest, NextResponse } from "next/server";
+import { db } from "@/lib/db";
+import { registrationSchema, searchSchema } from "@/lib/validations";
+import { generateUniqueQRCode, generateQRCodeDataURL } from "@/lib/qr";
+import { sendRegistrationEmail } from "@/lib/email";
+import { auth } from "@/lib/auth";
+import { Prisma } from "@prisma/client";
+
+// POST - Create a new registration (Public)
+export async function POST(request: NextRequest) {
+  try {
+    const body = await request.json();
+
+    // Validate input
+    const validatedData = registrationSchema.parse(body);
+
+    // Check for existing registration with same QID
+    const existingQid = await db.registration.findUnique({
+      where: { qid: validatedData.qid },
+    });
+
+    if (existingQid) {
+      return NextResponse.json(
+        { success: false, error: "A registration with this QID already exists" },
+        { status: 400 }
+      );
+    }
+
+    // Check for existing registration with same email
+    const existingEmail = await db.registration.findUnique({
+      where: { email: validatedData.email },
+    });
+
+    if (existingEmail) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: "A registration with this email already exists",
+        },
+        { status: 400 }
+      );
+    }
+
+    // Check if registration is still open
+    const settings = await db.systemSettings.findFirst();
+    if (settings && !settings.registrationOpen) {
+      return NextResponse.json(
+        { success: false, error: "Registration is currently closed" },
+        { status: 400 }
+      );
+    }
+
+    // Check if max registrations reached
+    if (settings) {
+      const totalRegistrations = await db.registration.count();
+      if (totalRegistrations >= settings.maxRegistrations) {
+        return NextResponse.json(
+          {
+            success: false,
+            error: "Maximum registration limit has been reached",
+          },
+          { status: 400 }
+        );
+      }
+    }
+
+    // Generate unique QR code
+    let qrCode: string;
+    let isUnique = false;
+
+    do {
+      qrCode = generateUniqueQRCode();
+      const existing = await db.registration.findUnique({
+        where: { qrCode },
+      });
+      isUnique = !existing;
+    } while (!isUnique);
+
+    // Create registration
+    const registration = await db.registration.create({
+      data: {
+        qid: validatedData.qid,
+        fullName: validatedData.fullName,
+        ageGroup: validatedData.ageGroup,
+        email: validatedData.email,
+        nationality: validatedData.nationality,
+        gender: validatedData.gender,
+        qrCode,
+      },
+    });
+
+    // Generate QR code image and send email
+    try {
+      const qrCodeDataUrl = await generateQRCodeDataURL(qrCode);
+
+      await sendRegistrationEmail({
+        to: registration.email,
+        fullName: registration.fullName,
+        qrCode: registration.qrCode,
+        qrCodeDataUrl,
+        registrationId: registration.id,
+        qid: registration.qid,
+        ageGroup: registration.ageGroup,
+      });
+    } catch (emailError) {
+      console.error("Failed to send email:", emailError);
+      // Don't fail the registration if email fails
+    }
+
+    return NextResponse.json(
+      {
+        success: true,
+        data: {
+          id: registration.id,
+          qid: registration.qid,
+          fullName: registration.fullName,
+          ageGroup: registration.ageGroup,
+          email: registration.email,
+          nationality: registration.nationality,
+          gender: registration.gender,
+          qrCode: registration.qrCode,
+          status: registration.status,
+          createdAt: registration.createdAt,
+        },
+        message:
+          "Registration successful. Please check your email for confirmation.",
+      },
+      { status: 201 }
+    );
+  } catch (error) {
+    console.error("Registration error:", error);
+
+    if (error instanceof Prisma.PrismaClientKnownRequestError) {
+      if (error.code === "P2002") {
+        return NextResponse.json(
+          { success: false, error: "A registration with this information already exists" },
+          { status: 400 }
+        );
+      }
+    }
+
+    return NextResponse.json(
+      { success: false, error: "Registration failed. Please try again." },
+      { status: 500 }
+    );
+  }
+}
+
+// GET - List registrations (Protected)
+export async function GET(request: NextRequest) {
+  try {
+    const session = await auth();
+
+    if (!session?.user) {
+      return NextResponse.json(
+        { success: false, error: "Unauthorized" },
+        { status: 401 }
+      );
+    }
+
+    const { searchParams } = new URL(request.url);
+
+    const params = searchSchema.parse({
+      query: searchParams.get("query") || undefined,
+      status: searchParams.get("status") || undefined,
+      ageGroup: searchParams.get("ageGroup") || undefined,
+      date: searchParams.get("date") || undefined,
+      page: searchParams.get("page") || 1,
+      limit: searchParams.get("limit") || 20,
+      sortBy: searchParams.get("sortBy") || "createdAt",
+      sortOrder: searchParams.get("sortOrder") || "desc",
+    });
+
+    // Build where clause
+    const where: Prisma.RegistrationWhereInput = {};
+
+    if (params.query) {
+      where.OR = [
+        { fullName: { contains: params.query, mode: "insensitive" } },
+        { qid: { contains: params.query } },
+        { email: { contains: params.query, mode: "insensitive" } },
+      ];
+    }
+
+    if (params.status && params.status !== "ALL") {
+      where.status = params.status;
+    }
+
+    if (params.ageGroup && params.ageGroup !== "ALL") {
+      where.ageGroup = params.ageGroup;
+    }
+
+    // Date filter - filter by specific day
+    if (params.date) {
+      const filterDate = new Date(params.date);
+      const nextDay = new Date(filterDate);
+      nextDay.setDate(nextDay.getDate() + 1);
+
+      where.createdAt = {
+        gte: filterDate,
+        lt: nextDay,
+      };
+    }
+
+    // Get total count
+    const total = await db.registration.count({ where });
+
+    // Get registrations with dynamic sorting
+    const registrations = await db.registration.findMany({
+      where,
+      include: {
+        checkedInByUser: {
+          select: {
+            id: true,
+            name: true,
+            email: true,
+          },
+        },
+      },
+      orderBy: { [params.sortBy]: params.sortOrder },
+      skip: (params.page - 1) * params.limit,
+      take: params.limit,
+    });
+
+    return NextResponse.json({
+      success: true,
+      data: {
+        registrations,
+        pagination: {
+          page: params.page,
+          limit: params.limit,
+          total,
+          totalPages: Math.ceil(total / params.limit),
+        },
+      },
+    });
+  } catch (error) {
+    console.error("Error fetching registrations:", error);
+    return NextResponse.json(
+      { success: false, error: "Failed to fetch registrations" },
+      { status: 500 }
+    );
+  }
+}

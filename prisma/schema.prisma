@@ -1,0 +1,119 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+model Registration {
+  id            String    @id @default(cuid())
+  qid           String    @unique
+  fullName      String
+  ageGroup      AgeGroup
+  email         String    @unique
+  nationality   String
+  gender        Gender
+  qrCode        String    @unique
+  status        Status    @default(REGISTERED)
+  checkedInAt   DateTime?
+  checkedInBy   String?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  // Relations
+  checkedInByUser User? @relation("CheckedInBy", fields: [checkedInBy], references: [id])
+
+  @@index([qid])
+  @@index([email])
+  @@index([status])
+  @@index([createdAt])
+  @@index([ageGroup])
+  @@index([nationality])
+}
+
+model User {
+  id            String    @id @default(cuid())
+  email         String    @unique
+  password      String
+  name          String
+  role          Role      @default(VALIDATOR)
+  isActive      Boolean   @default(true)
+  lastLogin     DateTime?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  // Relations
+  checkIns      Registration[] @relation("CheckedInBy")
+  auditLogs     AuditLog[]
+
+  @@index([email])
+  @@index([role])
+}
+
+model AuditLog {
+  id            String      @id @default(cuid())
+  userId        String
+  action        AuditAction
+  entity        String
+  entityId      String?
+  metadata      Json?
+  ipAddress     String?
+  userAgent     String?
+  createdAt     DateTime    @default(now())
+
+  // Relations
+  user          User        @relation(fields: [userId], references: [id])
+
+  @@index([userId])
+  @@index([action])
+  @@index([entity])
+  @@index([createdAt])
+}
+
+model SystemSettings {
+  id                    String   @id @default(cuid())
+  registrationOpen      Boolean  @default(true)
+  maxRegistrations      Int      @default(6000)
+  eventDate             DateTime
+  eventName             String
+  eventLocation         String
+  contactEmail          String
+  updatedAt             DateTime @updatedAt
+}
+
+enum AgeGroup {
+  KIDS    // Under 12
+  YOUTH   // 12-17
+  ADULT   // 18-45
+  SENIOR  // 45+
+}
+
+enum Gender {
+  MALE
+  FEMALE
+}
+
+enum Status {
+  REGISTERED
+  CHECKED_IN
+  CANCELLED
+}
+
+enum Role {
+  ADMIN
+  MANAGER
+  VALIDATOR
+}
+
+enum AuditAction {
+  LOGIN
+  LOGOUT
+  CREATE
+  UPDATE
+  DELETE
+  CHECK_IN
+  EXPORT
+}
