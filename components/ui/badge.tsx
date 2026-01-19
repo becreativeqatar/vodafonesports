@@ -34,6 +34,8 @@ const badgeVariants = cva(
           "border-transparent bg-secondary-aubergine text-white",
         validator:
           "border-transparent bg-secondary-turquoise text-white",
+        staff:
+          "border-transparent bg-secondary-aqua-blue text-white",
       },
     },
     defaultVariants: {
