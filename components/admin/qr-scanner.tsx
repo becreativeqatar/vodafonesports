@@ -103,7 +103,11 @@ export function QRScanner() {
         },
         async (decodedText) => {
           // Stop scanning immediately
-          await scanner.stop();
+          try {
+            await scanner.stop();
+          } catch {
+            // Ignore stop errors
+          }
           setScanning(false);
           await handleScan(decodedText);
         },
@@ -164,7 +168,7 @@ export function QRScanner() {
 
       // Add to scan history
       const historyItem: ScanHistoryItem = {
-        id: result.data?.id || crypto.randomUUID(),
+        id: result.data?.id || `scan-${Date.now()}-${Math.random().toString(36).slice(2)}`,
         fullName: result.data?.fullName || "Unknown",
         ageGroup: result.data?.ageGroup || "Unknown",
         success: result.success,
@@ -190,7 +194,7 @@ export function QRScanner() {
 
       // Add failed scan to history
       setScanHistory((prev) => [{
-        id: crypto.randomUUID(),
+        id: `scan-${Date.now()}-${Math.random().toString(36).slice(2)}`,
         fullName: "Unknown",
         ageGroup: "Unknown",
         success: false,

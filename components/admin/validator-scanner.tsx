@@ -67,6 +67,16 @@ export function ValidatorScanner({ userName }: ValidatorScannerProps) {
 
   const startScanning = async () => {
     try {
+      // Stop any existing scanner first
+      if (scannerRef.current) {
+        try {
+          await scannerRef.current.stop();
+        } catch {
+          // Ignore stop errors
+        }
+        scannerRef.current = null;
+      }
+
       const { Html5Qrcode } = await import("html5-qrcode");
 
       if (!containerRef.current) return;
@@ -87,7 +97,11 @@ export function ValidatorScanner({ userName }: ValidatorScannerProps) {
           qrbox: { width: 280, height: 280 },
         },
         async (decodedText) => {
-          await scanner.stop();
+          try {
+            await scanner.stop();
+          } catch {
+            // Ignore stop errors
+          }
           setScanning(false);
           await handleScan(decodedText);
         },
@@ -97,9 +111,21 @@ export function ValidatorScanner({ userName }: ValidatorScannerProps) {
       setScanning(true);
       setScanResult(null);
     } catch (error: any) {
+      console.error("Scanner error:", error);
+      setScanning(false);
+
+      let message = "Unable to access camera. Please check permissions.";
+      if (error?.message?.includes("NotAllowedError") || error?.name === "NotAllowedError") {
+        message = "Camera permission denied. Please allow camera access and refresh.";
+      } else if (error?.message?.includes("NotFoundError") || error?.name === "NotFoundError") {
+        message = "No camera found on this device.";
+      } else if (error?.message?.includes("NotReadableError") || error?.name === "NotReadableError") {
+        message = "Camera is in use by another application.";
+      }
+
       toast({
         title: "Camera Error",
-        description: "Unable to access camera. Please check permissions.",
+        description: message,
         variant: "destructive",
       });
     }
