@@ -94,44 +94,37 @@ function SuccessContent() {
   const handleCopyQR = async () => {
     if (!qrDataUrl) return;
 
+    const copyText = async () => {
+      await navigator.clipboard.writeText(qrCode);
+      setCopied(true);
+      toast({
+        title: "Copied!",
+        description: "QR code text copied to clipboard",
+      });
+      setTimeout(() => setCopied(false), 2000);
+    };
+
     try {
       // Convert data URL to blob
       const response = await fetch(qrDataUrl);
       const blob = await response.blob();
 
       // Try to copy image to clipboard
-      if (navigator.clipboard && "write" in navigator.clipboard) {
-        await navigator.clipboard.write([
-          new ClipboardItem({
-            [blob.type]: blob,
-          }),
-        ]);
-        setCopied(true);
-        toast({
-          title: "Copied!",
-          description: "QR code copied to clipboard",
-        });
-        setTimeout(() => setCopied(false), 2000);
-      } else if (navigator.clipboard?.writeText) {
-        // Fallback: copy the QR code text
-        await navigator.clipboard.writeText(qrCode);
-        setCopied(true);
-        toast({
-          title: "Copied!",
-          description: "QR code text copied to clipboard",
-        });
-        setTimeout(() => setCopied(false), 2000);
-      }
-    } catch (error) {
+      await navigator.clipboard.write([
+        new ClipboardItem({
+          [blob.type]: blob,
+        }),
+      ]);
+      setCopied(true);
+      toast({
+        title: "Copied!",
+        description: "QR code copied to clipboard",
+      });
+      setTimeout(() => setCopied(false), 2000);
+    } catch {
       // Fallback: copy the QR code text
       try {
-        await navigator.clipboard.writeText(qrCode);
-        setCopied(true);
-        toast({
-          title: "Copied!",
-          description: "QR code text copied to clipboard",
-        });
-        setTimeout(() => setCopied(false), 2000);
+        await copyText();
       } catch {
         toast({
           title: "Copy failed",
