@@ -4,9 +4,6 @@ import React, { useState, useEffect, useRef, Component, ErrorInfo, ReactNode } f
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import { useToast } from "@/hooks/use-toast";
-import { Logo } from "@/components/shared/logo";
-import { signOut } from "next-auth/react";
 import {
   Camera,
   CheckCircle2,
@@ -73,16 +70,21 @@ interface ValidatorScannerProps {
 }
 
 function ValidatorScannerInner({ userName }: ValidatorScannerProps) {
-  const { toast } = useToast();
   const [scanning, setScanning] = useState(false);
   const [cameraLoading, setCameraLoading] = useState(false);
   const [processing, setProcessing] = useState(false);
   const [scanResult, setScanResult] = useState<ScanResult | null>(null);
   const [todayCheckIns, setTodayCheckIns] = useState(0);
   const [manualCode, setManualCode] = useState("");
+  const [toastMessage, setToastMessage] = useState<string | null>(null);
   const scannerRef = useRef<any>(null);
   const containerRef = useRef<HTMLDivElement>(null);
-  const inputRef = useRef<HTMLInputElement>(null);
+
+  // Simple toast replacement for debugging
+  const toast = ({ title, description, variant }: { title: string; description: string; variant?: string }) => {
+    setToastMessage(`${title}: ${description}`);
+    setTimeout(() => setToastMessage(null), 3000);
+  };
 
   // Fetch today's check-in count
   useEffect(() => {
@@ -92,8 +94,8 @@ function ValidatorScannerInner({ userName }: ValidatorScannerProps) {
         const response = await fetch("/api/registrations?status=CHECKED_IN&limit=1");
         if (!mounted) return;
         const data = await response.json();
-        if (mounted && data.success) {
-          setTodayCheckIns(data.data?.pagination?.total || 0);
+        if (mounted && data?.success) {
+          setTodayCheckIns(data?.data?.pagination?.total ?? 0);
         }
       } catch (error) {
         console.error("Failed to fetch stats:", error);
@@ -135,18 +137,8 @@ function ValidatorScannerInner({ userName }: ValidatorScannerProps) {
       const html5QrcodeModule = await import("html5-qrcode");
       const Html5Qrcode = html5QrcodeModule.Html5Qrcode;
 
-      if (!containerRef.current) {
-        setCameraLoading(false);
-        return;
-      }
-
-      // Clear container
-      containerRef.current.innerHTML = "";
-
+      // Use fixed ID that's already in the DOM
       const scannerId = "validator-qr-reader";
-      const div = document.createElement("div");
-      div.id = scannerId;
-      containerRef.current.appendChild(div);
 
       const scanner = new Html5Qrcode(scannerId);
       scannerRef.current = scanner;
@@ -160,7 +152,7 @@ function ValidatorScannerInner({ userName }: ValidatorScannerProps) {
           aspectRatio: 1,
         },
         (decodedText) => {
-          // Success callback - use sync version to avoid issues
+          // Success callback
           scanner.stop().then(() => {
             setScanning(false);
             handleScan(decodedText);
@@ -272,17 +264,28 @@ function ValidatorScannerInner({ userName }: ValidatorScannerProps) {
     setManualCode(value);
   };
 
+  const handleLogout = () => {
+    window.location.href = "/api/auth/signout";
+  };
+
   return (
     <div className="min-h-screen bg-vodafone-red flex flex-col">
+      {/* Toast Message */}
+      {toastMessage && (
+        <div className="fixed top-4 left-4 right-4 bg-black text-white p-3 rounded-lg z-50 text-center">
+          {toastMessage}
+        </div>
+      )}
+
       {/* Header */}
       <header className="bg-white px-4 py-3 flex items-center justify-between shadow-sm">
-        <Logo size="sm" />
+        <div className="font-bold text-vodafone-red">Sports Village</div>
         <div className="flex items-center gap-3">
-          <span className="text-sm text-gray-600 hidden sm:block">{userName}</span>
+          <span className="text-sm text-gray-600 hidden sm:block">{userName || "Validator"}</span>
           <Button
             variant="ghost"
             size="sm"
-            onClick={() => signOut({ callbackUrl: "/login" })}
+            onClick={handleLogout}
             className="text-gray-600"
           >
             <LogOut className="h-4 w-4" />
@@ -337,12 +340,13 @@ function ValidatorScannerInner({ userName }: ValidatorScannerProps) {
 
         {/* Camera View */}
         {!scanResult && (
-          <div
-            ref={containerRef}
-            className="w-full max-w-sm aspect-square bg-black rounded-2xl overflow-hidden relative"
-          >
+          <div className="w-full max-w-sm aspect-square bg-black rounded-2xl overflow-hidden relative">
+            {/* Scanner container - must have fixed ID for html5-qrcode */}
+            <div id="validator-qr-reader" className="w-full h-full" />
+
+            {/* Overlay for start button */}
             {!scanning && !cameraLoading && !processing && (
-              <div className="absolute inset-0 flex flex-col items-center justify-center text-white z-10">
+              <div className="absolute inset-0 flex flex-col items-center justify-center text-white z-10 bg-black">
                 <Camera className="h-16 w-16 mb-4 opacity-50" />
                 <Button
                   onClick={startScanning}
@@ -353,6 +357,8 @@ function ValidatorScannerInner({ userName }: ValidatorScannerProps) {
                 </Button>
               </div>
             )}
+
+            {/* Loading overlay */}
             {(cameraLoading || processing) && (
               <div className="absolute inset-0 bg-black flex items-center justify-center z-10">
                 <div className="text-center text-white">
@@ -397,7 +403,6 @@ function ValidatorScannerInner({ userName }: ValidatorScannerProps) {
                   SV-
                 </span>
                 <Input
-                  ref={inputRef}
                   type="text"
                   inputMode="numeric"
                   pattern="[0-9]*"
