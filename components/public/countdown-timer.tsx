@@ -46,13 +46,13 @@ export function CountdownTimer({ targetDate }: CountdownTimerProps) {
 
   if (!mounted) {
     return (
-      <div className="flex items-center justify-center gap-4 md:gap-6">
-        {["Days", "Hours", "Minutes", "Seconds"].map((label) => (
+      <div className="flex items-center justify-center gap-2 md:gap-6">
+        {["Days", "Hours", "Min", "Sec"].map((label) => (
           <div key={label} className="text-center">
-            <div className="bg-white/20 backdrop-blur-sm rounded-lg p-3 md:p-4 min-w-[70px] md:min-w-[90px]">
-              <span className="text-3xl md:text-5xl font-bold">--</span>
+            <div className="bg-white/20 backdrop-blur-sm rounded-lg p-2 md:p-4 min-w-[60px] md:min-w-[90px]">
+              <span className="text-2xl md:text-5xl font-bold">--</span>
             </div>
-            <span className="text-sm md:text-base mt-2 block opacity-80">
+            <span className="text-xs md:text-base mt-1 md:mt-2 block opacity-80">
               {label}
             </span>
           </div>
@@ -62,24 +62,27 @@ export function CountdownTimer({ targetDate }: CountdownTimerProps) {
   }
 
   return (
-    <div className="flex items-center justify-center gap-4 md:gap-6">
-      <TimeUnit value={timeLeft.days} label="Days" />
-      <TimeUnit value={timeLeft.hours} label="Hours" />
-      <TimeUnit value={timeLeft.minutes} label="Minutes" />
-      <TimeUnit value={timeLeft.seconds} label="Seconds" />
+    <div className="flex items-center justify-center gap-2 md:gap-6">
+      <TimeUnit value={timeLeft.days} label="Days" mobileLabel="Days" />
+      <TimeUnit value={timeLeft.hours} label="Hours" mobileLabel="Hrs" />
+      <TimeUnit value={timeLeft.minutes} label="Minutes" mobileLabel="Min" />
+      <TimeUnit value={timeLeft.seconds} label="Seconds" mobileLabel="Sec" />
     </div>
   );
 }
 
-function TimeUnit({ value, label }: { value: number; label: string }) {
+function TimeUnit({ value, label, mobileLabel }: { value: number; label: string; mobileLabel: string }) {
   return (
     <div className="text-center">
-      <div className="bg-white/20 backdrop-blur-sm rounded-lg p-3 md:p-4 min-w-[70px] md:min-w-[90px]">
-        <span className="text-3xl md:text-5xl font-bold">
+      <div className="bg-white/20 backdrop-blur-sm rounded-lg p-2 md:p-4 min-w-[60px] md:min-w-[90px]">
+        <span className="text-2xl md:text-5xl font-bold">
           {value.toString().padStart(2, "0")}
         </span>
       </div>
-      <span className="text-sm md:text-base mt-2 block opacity-80">{label}</span>
+      <span className="text-xs md:text-base mt-1 md:mt-2 block opacity-80">
+        <span className="md:hidden">{mobileLabel}</span>
+        <span className="hidden md:inline">{label}</span>
+      </span>
     </div>
   );
 }

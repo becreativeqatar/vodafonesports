@@ -9,46 +9,46 @@ export default function HomePage() {
   return (
     <div>
       {/* Hero Section */}
-      <section className="bg-vodafone-gradient text-white py-20 md:py-32">
+      <section className="bg-vodafone-gradient text-white py-6 md:py-32 min-h-[calc(100dvh-64px)] md:min-h-0 flex items-center">
         <div className="container mx-auto px-4">
           <div className="max-w-3xl mx-auto text-center">
             {/* White Vodafone Logo */}
-            <div className="flex justify-center mb-8">
+            <div className="flex justify-center mb-4 md:mb-8">
               <Image
                 src="/images/vodafone-logo-white.png"
                 alt="Vodafone"
                 width={200}
                 height={54}
-                className="object-contain"
+                className="object-contain w-[140px] md:w-[200px] h-auto"
                 priority
               />
             </div>
-            <div className="flex flex-col sm:flex-row items-center justify-center gap-3 mb-6">
-              <span className="inline-block bg-white/20 backdrop-blur-sm px-4 py-2 rounded-full text-sm font-medium">
+            <div className="flex flex-col sm:flex-row items-center justify-center gap-2 md:gap-3 mb-3 md:mb-6">
+              <span className="inline-block bg-white/20 backdrop-blur-sm px-3 py-1.5 md:px-4 md:py-2 rounded-full text-xs md:text-sm font-medium">
                 National Sport Day 2026
               </span>
-              <span className="inline-block bg-white text-vodafone-red px-4 py-2 rounded-full text-sm font-bold">
+              <span className="inline-block bg-white text-vodafone-red px-3 py-1.5 md:px-4 md:py-2 rounded-full text-xs md:text-sm font-bold">
                 10 February 2026
               </span>
             </div>
-            <h1 className="text-4xl md:text-6xl font-bold mb-6">
+            <h1 className="text-3xl md:text-6xl font-bold mb-3 md:mb-6">
               Sports Village
             </h1>
-            <p className="text-xl md:text-2xl text-white/90 mb-8">
+            <p className="text-base md:text-2xl text-white/90 mb-4 md:mb-8">
               Join us for an exciting day of sports and activities at Downtown
               Msheireb, Qatar
             </p>
 
             {/* Countdown Timer */}
-            <div className="mb-10">
+            <div className="mb-5 md:mb-10">
               <CountdownTimer targetDate="2026-02-10T07:30:00+03:00" />
             </div>
 
-            <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
+            <div className="flex flex-col sm:flex-row items-center justify-center gap-3 md:gap-4">
               <Button
                 asChild
                 size="lg"
-                className="bg-white text-vodafone-red hover:bg-gray-100 text-lg px-8 py-6"
+                className="bg-white text-vodafone-red hover:bg-gray-100 text-base md:text-lg px-6 py-4 md:px-8 md:py-6"
               >
                 <Link href="/register">Register Now</Link>
               </Button>
@@ -56,7 +56,7 @@ export default function HomePage() {
                 asChild
                 variant="outline"
                 size="lg"
-                className="bg-transparent border-white text-white hover:bg-white hover:text-vodafone-red text-lg px-8 py-6"
+                className="bg-transparent border-white text-white hover:bg-white hover:text-vodafone-red text-base md:text-lg px-6 py-4 md:px-8 md:py-6"
               >
                 <Link href="#event-info">Learn More</Link>
               </Button>
@@ -112,9 +112,14 @@ export default function HomePage() {
                   </div>
                   <h3 className="font-semibold text-lg">Location</h3>
                 </div>
-                <p className="text-vodafone-grey">
+                <a
+                  href="https://share.google/wSJgqfIyYScjsx5uo"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-vodafone-red hover:underline"
+                >
                   Downtown Msheireb, Barahat Msheireb
-                </p>
+                </a>
               </CardContent>
             </Card>
           </div>
