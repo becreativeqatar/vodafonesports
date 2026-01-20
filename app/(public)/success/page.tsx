@@ -6,7 +6,8 @@ import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { QRDisplay } from "@/components/public/qr-display";
-import { CheckCircle2, Calendar, Download, Share2, Mail, Printer, Copy, Check } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import { CheckCircle2, Calendar, Download, Share2, Mail, Printer, Copy, Check, Plus, X, Users, Loader2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
 function SuccessContent() {
@@ -15,6 +16,9 @@ function SuccessContent() {
   const [qrDataUrl, setQrDataUrl] = useState<string>("");
   const [canShare, setCanShare] = useState(false);
   const [copied, setCopied] = useState(false);
+  const [inviteEmail, setInviteEmail] = useState("");
+  const [inviteEmails, setInviteEmails] = useState<string[]>([]);
+  const [sendingInvites, setSendingInvites] = useState(false);
 
   const id = searchParams.get("id") || "";
   const qrCode = searchParams.get("qrCode") || "";
@@ -132,6 +136,82 @@ function SuccessContent() {
           variant: "destructive",
         });
       }
+    }
+  };
+
+  const isValidEmail = (email: string) => {
+    return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+  };
+
+  const handleAddEmail = () => {
+    const trimmedEmail = inviteEmail.trim().toLowerCase();
+    if (!trimmedEmail) return;
+
+    if (!isValidEmail(trimmedEmail)) {
+      toast({
+        title: "Invalid email",
+        description: "Please enter a valid email address",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (inviteEmails.includes(trimmedEmail)) {
+      toast({
+        title: "Duplicate email",
+        description: "This email has already been added",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setInviteEmails([...inviteEmails, trimmedEmail]);
+    setInviteEmail("");
+  };
+
+  const handleRemoveEmail = (emailToRemove: string) => {
+    setInviteEmails(inviteEmails.filter((e) => e !== emailToRemove));
+  };
+
+  const handleSendInvites = async () => {
+    if (inviteEmails.length === 0) return;
+
+    setSendingInvites(true);
+    let successCount = 0;
+    let failCount = 0;
+
+    for (const email of inviteEmails) {
+      try {
+        const res = await fetch("/api/invite", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ email, inviterName: fullName }),
+        });
+
+        if (res.ok) {
+          successCount++;
+        } else {
+          failCount++;
+        }
+      } catch {
+        failCount++;
+      }
+    }
+
+    setSendingInvites(false);
+    setInviteEmails([]);
+
+    if (successCount > 0) {
+      toast({
+        title: "Invitations sent!",
+        description: `Successfully sent ${successCount} invitation${successCount > 1 ? "s" : ""}${failCount > 0 ? `. ${failCount} failed.` : ""}`,
+      });
+    } else {
+      toast({
+        title: "Failed to send",
+        description: "Could not send invitations. Please try again.",
+        variant: "destructive",
+      });
     }
   };
 
@@ -269,6 +349,87 @@ function SuccessContent() {
                   </span>
                 </li>
               </ul>
+            </CardContent>
+          </Card>
+
+          {/* Invite Friends & Family */}
+          <Card className="mt-8 print:hidden">
+            <CardContent className="pt-6">
+              <div className="flex items-center gap-2 mb-4">
+                <Users className="h-5 w-5 text-vodafone-red" />
+                <h2 className="font-semibold text-lg">Invite Friends & Family</h2>
+              </div>
+              <p className="text-sm text-gray-600 mb-4">
+                Share the fun! Invite your friends and family to register for the event.
+              </p>
+
+              {/* Email Input */}
+              <div className="flex gap-2 mb-4">
+                <Input
+                  type="email"
+                  placeholder="Enter email address"
+                  value={inviteEmail}
+                  onChange={(e) => setInviteEmail(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") {
+                      e.preventDefault();
+                      handleAddEmail();
+                    }
+                  }}
+                  className="flex-1"
+                />
+                <Button
+                  type="button"
+                  onClick={handleAddEmail}
+                  variant="outline"
+                  size="icon"
+                  className="shrink-0"
+                >
+                  <Plus className="h-4 w-4" />
+                </Button>
+              </div>
+
+              {/* Email List */}
+              {inviteEmails.length > 0 && (
+                <div className="space-y-2 mb-4">
+                  {inviteEmails.map((inviteEmailItem) => (
+                    <div
+                      key={inviteEmailItem}
+                      className="flex items-center justify-between bg-gray-50 px-3 py-2 rounded-lg"
+                    >
+                      <span className="text-sm text-gray-700">{inviteEmailItem}</span>
+                      <button
+                        type="button"
+                        onClick={() => handleRemoveEmail(inviteEmailItem)}
+                        className="text-gray-400 hover:text-vodafone-red"
+                      >
+                        <X className="h-4 w-4" />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {/* Send Button */}
+              {inviteEmails.length > 0 && (
+                <Button
+                  onClick={handleSendInvites}
+                  disabled={sendingInvites}
+                  className="w-full"
+                >
+                  {sendingInvites ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      Sending...
+                    </>
+                  ) : (
+                    <>
+                      <Mail className="mr-2 h-4 w-4" />
+                      Send {inviteEmails.length} Invitation{inviteEmails.length > 1 ? "s" : ""}
+                    </>
+                  )}
+                </Button>
+              )}
             </CardContent>
           </Card>
 
