@@ -35,6 +35,7 @@ interface ValidatorScannerProps {
 export function ValidatorScanner({ userName }: ValidatorScannerProps) {
   const { toast } = useToast();
   const [scanning, setScanning] = useState(false);
+  const [cameraLoading, setCameraLoading] = useState(false);
   const [processing, setProcessing] = useState(false);
   const [scanResult, setScanResult] = useState<ScanResult | null>(null);
   const [todayCheckIns, setTodayCheckIns] = useState(0);
@@ -69,6 +70,9 @@ export function ValidatorScanner({ userName }: ValidatorScannerProps) {
   }, []);
 
   const startScanning = async () => {
+    setCameraLoading(true);
+    setScanResult(null);
+
     try {
       // Stop any existing scanner first
       if (scannerRef.current) {
@@ -82,7 +86,12 @@ export function ValidatorScanner({ userName }: ValidatorScannerProps) {
 
       const { Html5Qrcode } = await import("html5-qrcode");
 
-      if (!containerRef.current) return;
+      if (!containerRef.current) {
+        setCameraLoading(false);
+        return;
+      }
+
+      // Clear container
       containerRef.current.innerHTML = "";
 
       const scannerId = "validator-qr-reader";
@@ -93,11 +102,27 @@ export function ValidatorScanner({ userName }: ValidatorScannerProps) {
       const scanner = new Html5Qrcode(scannerId);
       scannerRef.current = scanner;
 
+      // Get available cameras first (helps with iOS)
+      const cameras = await Html5Qrcode.getCameras();
+
+      if (!cameras || cameras.length === 0) {
+        throw new Error("NotFoundError");
+      }
+
+      // Prefer back camera
+      const backCamera = cameras.find(c =>
+        c.label.toLowerCase().includes("back") ||
+        c.label.toLowerCase().includes("rear") ||
+        c.label.toLowerCase().includes("environment")
+      );
+
+      const cameraId = backCamera?.id || cameras[0].id;
+
       await scanner.start(
-        { facingMode: "environment" },
+        cameraId,
         {
           fps: 10,
-          qrbox: { width: 280, height: 280 },
+          qrbox: { width: 250, height: 250 },
         },
         async (decodedText) => {
           try {
@@ -111,10 +136,12 @@ export function ValidatorScanner({ userName }: ValidatorScannerProps) {
         () => {}
       );
 
+      // Camera started successfully
+      setCameraLoading(false);
       setScanning(true);
-      setScanResult(null);
     } catch (error: any) {
       console.error("Scanner error:", error);
+      setCameraLoading(false);
       setScanning(false);
 
       let message = "Unable to access camera. Please check permissions.";
@@ -124,6 +151,8 @@ export function ValidatorScanner({ userName }: ValidatorScannerProps) {
         message = "No camera found on this device.";
       } else if (error?.message?.includes("NotReadableError") || error?.name === "NotReadableError") {
         message = "Camera is in use by another application.";
+      } else if (error?.message?.includes("NotSupportedError")) {
+        message = "Camera not supported. Please use the manual entry below.";
       }
 
       toast({
@@ -165,7 +194,8 @@ export function ValidatorScanner({ userName }: ValidatorScannerProps) {
   const scanAgain = () => {
     setScanResult(null);
     setManualCode("");
-    startScanning();
+    setScanning(false);
+    setCameraLoading(false);
   };
 
   const handleManualSubmit = async (e: React.FormEvent) => {
@@ -269,8 +299,8 @@ export function ValidatorScanner({ userName }: ValidatorScannerProps) {
             ref={containerRef}
             className="w-full max-w-sm aspect-square bg-black rounded-2xl overflow-hidden relative"
           >
-            {!scanning && !processing && (
-              <div className="absolute inset-0 flex flex-col items-center justify-center text-white">
+            {!scanning && !cameraLoading && !processing && (
+              <div className="absolute inset-0 flex flex-col items-center justify-center text-white z-10">
                 <Camera className="h-16 w-16 mb-4 opacity-50" />
                 <Button
                   onClick={startScanning}
@@ -281,9 +311,14 @@ export function ValidatorScanner({ userName }: ValidatorScannerProps) {
                 </Button>
               </div>
             )}
-            {processing && (
-              <div className="absolute inset-0 bg-black/70 flex items-center justify-center">
-                <Loader2 className="h-12 w-12 text-white animate-spin" />
+            {(cameraLoading || processing) && (
+              <div className="absolute inset-0 bg-black flex items-center justify-center z-10">
+                <div className="text-center text-white">
+                  <Loader2 className="h-12 w-12 animate-spin mx-auto mb-2" />
+                  <p className="text-sm opacity-70">
+                    {cameraLoading ? "Starting camera..." : "Processing..."}
+                  </p>
+                </div>
               </div>
             )}
           </div>
