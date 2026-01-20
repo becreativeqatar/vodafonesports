@@ -42,10 +42,10 @@ export function AdminHeader({ user }: AdminHeaderProps) {
   }[user.role] as "admin" | "manager" | "validator";
 
   return (
-    <header className="bg-white border-b px-6 py-4">
+    <header className="bg-white border-b px-6 py-2">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-lg font-semibold text-vodafone-grey">
+          <h1 className="text-base font-semibold text-vodafone-grey">
             Sports Village Admin
           </h1>
         </div>
