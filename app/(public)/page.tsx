@@ -3,13 +3,18 @@ import Image from "next/image";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { CountdownTimer } from "@/components/public/countdown-timer";
+import { LanguageToggle } from "@/components/shared/language-toggle";
 import { Calendar, MapPin, Clock, HelpCircle } from "lucide-react";
 
 export default function HomePage() {
   return (
     <div>
       {/* Hero Section */}
-      <section className="bg-vodafone-gradient text-white py-6 md:py-32 min-h-[calc(100dvh-64px)] md:min-h-0 flex items-center">
+      <section className="bg-vodafone-gradient text-white py-6 md:py-32 min-h-[calc(100dvh-64px)] md:min-h-0 flex items-center relative">
+        {/* Language Toggle */}
+        <div className="absolute top-4 right-4 z-10">
+          <LanguageToggle variant="ghost" size="sm" />
+        </div>
         <div className="container mx-auto px-4">
           <div className="max-w-3xl mx-auto text-center">
             {/* White Vodafone Logo */}
