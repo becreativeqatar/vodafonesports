@@ -60,8 +60,7 @@ export function ValidatorScanner({ userName }: ValidatorScannerProps) {
   }, [scanResult]);
 
   useEffect(() => {
-    // Auto-start scanner on mount
-    startScanning();
+    // Cleanup on unmount
     return () => {
       if (scannerRef.current) {
         scannerRef.current.stop().catch(() => {});
@@ -273,7 +272,13 @@ export function ValidatorScanner({ userName }: ValidatorScannerProps) {
             {!scanning && !processing && (
               <div className="absolute inset-0 flex flex-col items-center justify-center text-white">
                 <Camera className="h-16 w-16 mb-4 opacity-50" />
-                <p className="text-white/70">Starting camera...</p>
+                <Button
+                  onClick={startScanning}
+                  className="bg-white text-vodafone-red hover:bg-gray-100"
+                >
+                  <Camera className="h-4 w-4 mr-2" />
+                  Start Camera
+                </Button>
               </div>
             )}
             {processing && (
