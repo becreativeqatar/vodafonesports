@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef, Component, ErrorInfo, ReactNode } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -15,7 +15,47 @@ import {
   LogOut,
   RotateCcw,
   Search,
+  AlertTriangle,
 } from "lucide-react";
+
+// Error boundary to catch rendering errors
+interface ErrorBoundaryState {
+  hasError: boolean;
+  error?: Error;
+}
+
+class ValidatorErrorBoundary extends Component<{ children: ReactNode }, ErrorBoundaryState> {
+  constructor(props: { children: ReactNode }) {
+    super(props);
+    this.state = { hasError: false };
+  }
+
+  static getDerivedStateFromError(error: Error): ErrorBoundaryState {
+    return { hasError: true, error };
+  }
+
+  componentDidCatch(error: Error, errorInfo: ErrorInfo) {
+    console.error("Validator error:", error, errorInfo);
+  }
+
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div className="min-h-screen bg-vodafone-red flex flex-col items-center justify-center p-4">
+          <div className="bg-white rounded-2xl p-8 max-w-sm w-full text-center">
+            <AlertTriangle className="h-16 w-16 text-yellow-500 mx-auto mb-4" />
+            <h2 className="text-xl font-bold text-gray-800 mb-2">Something went wrong</h2>
+            <p className="text-gray-600 mb-4">Please refresh the page to try again.</p>
+            <Button onClick={() => window.location.reload()} className="w-full">
+              Refresh Page
+            </Button>
+          </div>
+        </div>
+      );
+    }
+    return this.props.children;
+  }
+}
 
 interface ScanResult {
   success: boolean;
@@ -32,7 +72,7 @@ interface ValidatorScannerProps {
   userName: string;
 }
 
-export function ValidatorScanner({ userName }: ValidatorScannerProps) {
+function ValidatorScannerInner({ userName }: ValidatorScannerProps) {
   const { toast } = useToast();
   const [scanning, setScanning] = useState(false);
   const [cameraLoading, setCameraLoading] = useState(false);
@@ -167,8 +207,14 @@ export function ValidatorScanner({ userName }: ValidatorScannerProps) {
       setScanResult(result);
 
       if (result.success) {
-        // Play success sound/vibrate
-        if (navigator.vibrate) navigator.vibrate(200);
+        // Play success sound/vibrate (skip on iOS - not supported)
+        try {
+          if (typeof navigator !== "undefined" && navigator.vibrate) {
+            navigator.vibrate(200);
+          }
+        } catch {
+          // Ignore vibration errors
+        }
       }
     } catch (error) {
       setScanResult({
@@ -367,5 +413,14 @@ export function ValidatorScanner({ userName }: ValidatorScannerProps) {
         )}
       </div>
     </div>
+  );
+}
+
+// Export wrapped version with error boundary
+export function ValidatorScanner(props: ValidatorScannerProps) {
+  return (
+    <ValidatorErrorBoundary>
+      <ValidatorScannerInner {...props} />
+    </ValidatorErrorBoundary>
   );
 }
