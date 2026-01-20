@@ -236,15 +236,15 @@ export function ValidatorScanner({ userName }: ValidatorScannerProps) {
                 : "bg-white text-red-600"
             }`}
           >
-            {scanResult.success ? (
+            {scanResult.success && scanResult.data ? (
               <>
                 <CheckCircle2 className="h-16 w-16 mx-auto mb-3" />
                 <p className="text-2xl font-bold mb-1">
-                  {scanResult.data?.fullName}
+                  {scanResult.data.fullName}
                 </p>
                 <Badge
                   variant={
-                    scanResult.data?.ageGroup.toLowerCase() as
+                    (scanResult.data.ageGroup?.toLowerCase() || "adult") as
                       | "kids"
                       | "youth"
                       | "adult"
@@ -252,7 +252,7 @@ export function ValidatorScanner({ userName }: ValidatorScannerProps) {
                   }
                   className="text-sm"
                 >
-                  {scanResult.data?.ageGroup}
+                  {scanResult.data.ageGroup}
                 </Badge>
               </>
             ) : (

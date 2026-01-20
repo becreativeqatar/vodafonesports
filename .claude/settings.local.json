@@ -1,0 +1,20 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npx tsx:*)",
+      "Bash(npm install:*)",
+      "Bash(del:*)",
+      "Bash(git add:*)",
+      "Bash(git commit -m \"$\\(cat <<''EOF''\nAdd mobile-optimized hero section and public live stats page\n\n- Optimize home page hero for mobile to fit without scrolling\n- Reduce padding, margins, and font sizes on mobile\n- Make countdown timer more compact on mobile\n- Add public /live page with real-time participant counts\n- Implement SSE endpoint for push-based live updates\n- Fullscreen display suitable for event screens\n\nCo-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>\nEOF\n\\)\")",
+      "Bash(git push)",
+      "Bash(npm run dev:*)",
+      "Bash(git commit:*)",
+      "Bash(npx prisma generate:*)",
+      "Bash(timeout /t 3 /nobreak)",
+      "Bash(npx tsc:*)",
+      "Bash(npm run build:*)",
+      "Bash(npx prisma:*)",
+      "Bash(ls:*)"
+    ]
+  }
+}
