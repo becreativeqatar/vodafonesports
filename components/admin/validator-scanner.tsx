@@ -195,13 +195,19 @@ function ValidatorScannerInner({ userName }: ValidatorScannerProps) {
     setProcessing(true);
     setScanResult(null);
 
+    // Create abort controller for timeout
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 15000); // 15 second timeout
+
     try {
       const response = await fetch("/api/validation/check-in", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ qrCode }),
+        signal: controller.signal,
       });
 
+      clearTimeout(timeoutId);
       const result = await response.json();
       setScanResult(result);
 
@@ -215,10 +221,14 @@ function ValidatorScannerInner({ userName }: ValidatorScannerProps) {
           // Ignore vibration errors
         }
       }
-    } catch (error) {
+    } catch (error: any) {
+      clearTimeout(timeoutId);
+      const errorMessage = error?.name === "AbortError"
+        ? "Request timed out. Please try again."
+        : "Failed to process check-in";
       setScanResult({
         success: false,
-        error: "Failed to process check-in",
+        error: errorMessage,
       });
     } finally {
       setProcessing(false);

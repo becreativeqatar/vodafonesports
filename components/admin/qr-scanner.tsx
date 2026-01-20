@@ -148,13 +148,19 @@ export function QRScanner() {
     setProcessing(true);
     setScanResult(null);
 
+    // Create abort controller for timeout
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 15000); // 15 second timeout
+
     try {
       const response = await fetch("/api/validation/check-in", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ qrCode }),
+        signal: controller.signal,
       });
 
+      clearTimeout(timeoutId);
       const result = await response.json();
       setScanResult(result);
 
@@ -177,10 +183,14 @@ export function QRScanner() {
           variant: "default",
         });
       }
-    } catch (error) {
+    } catch (error: any) {
+      clearTimeout(timeoutId);
+      const errorMessage = error?.name === "AbortError"
+        ? "Request timed out. Please try again."
+        : "Failed to process check-in";
       const errorResult = {
         success: false,
-        error: "Failed to process check-in",
+        error: errorMessage,
       };
       setScanResult(errorResult);
 
@@ -191,7 +201,7 @@ export function QRScanner() {
         ageGroup: "Unknown",
         success: false,
         timestamp: new Date(),
-        error: "Failed to process check-in",
+        error: errorMessage,
       }, ...prev].slice(0, 10));
     } finally {
       setProcessing(false);

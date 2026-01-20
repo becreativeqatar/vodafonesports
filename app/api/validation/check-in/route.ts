@@ -57,38 +57,40 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Perform check-in
-    const updatedRegistration = await db.registration.update({
-      where: { id: registration.id },
-      data: {
-        status: "CHECKED_IN",
-        checkedInAt: new Date(),
-        checkedInBy: session.user.id,
-      },
-    });
-
-    // Create audit log
-    await db.auditLog.create({
-      data: {
-        userId: session.user.id,
-        action: "CHECK_IN",
-        entity: "Registration",
-        entityId: registration.id,
-        metadata: { qrCode },
-      },
-    });
+    // Perform check-in and create audit log in a single transaction
+    const now = new Date();
+    const [updatedRegistration] = await db.$transaction([
+      db.registration.update({
+        where: { id: registration.id },
+        data: {
+          status: "CHECKED_IN",
+          checkedInAt: now,
+          checkedInBy: session.user.id,
+        },
+        select: {
+          id: true,
+          fullName: true,
+          ageGroup: true,
+          nationality: true,
+          gender: true,
+          status: true,
+          checkedInAt: true,
+        },
+      }),
+      db.auditLog.create({
+        data: {
+          userId: session.user.id,
+          action: "CHECK_IN",
+          entity: "Registration",
+          entityId: registration.id,
+          metadata: { qrCode },
+        },
+      }),
+    ]);
 
     return NextResponse.json({
       success: true,
-      data: {
-        id: updatedRegistration.id,
-        fullName: updatedRegistration.fullName,
-        ageGroup: updatedRegistration.ageGroup,
-        nationality: updatedRegistration.nationality,
-        gender: updatedRegistration.gender,
-        status: updatedRegistration.status,
-        checkedInAt: updatedRegistration.checkedInAt,
-      },
+      data: updatedRegistration,
       message: "Check-in successful",
     });
   } catch (error) {
