@@ -62,7 +62,7 @@ export async function sendRegistrationEmail({
         <table role="presentation" cellspacing="0" cellpadding="0" width="100%" style="max-width: 600px; margin: 0 auto; background-color: #ffffff;">
           <!-- Header -->
           <tr>
-            <td style="background: linear-gradient(135deg, #820000 0%, #E60000 50%, #FF0000 100%); padding: 30px 40px; text-align: center;">
+            <td style="background-color: #E60000; padding: 30px 40px; text-align: center;">
               <h1 style="color: #ffffff; margin: 0; font-size: 24px; font-weight: bold;">Sports Village 2026</h1>
               <p style="color: #ffffff; margin: 10px 0 0 0; font-size: 14px; opacity: 0.9;">National Sport Day</p>
             </td>
@@ -83,7 +83,7 @@ export async function sendRegistrationEmail({
 
               <!-- QR Code -->
               <div style="text-align: center; margin: 30px 0; padding: 30px; background-color: #f9f9f9; border-radius: 12px;">
-                <img src="cid:qrcode" alt="QR Code" style="width: 200px; height: 200px; border: 4px solid #E60000; border-radius: 8px;" />
+                <img src="${qrCodeDataUrl}" alt="QR Code" style="width: 200px; height: 200px; border: 4px solid #E60000; border-radius: 8px;" />
                 <p style="color: #E60000; font-weight: bold; margin: 15px 0 0 0; font-size: 18px;">${qrCode}</p>
               </div>
 
@@ -105,7 +105,7 @@ export async function sendRegistrationEmail({
                   </tr>
                   <tr>
                     <td style="padding: 8px 0; color: #4A4D4E;"><strong>Location:</strong></td>
-                    <td style="padding: 8px 0; color: #4A4D4E;">Downtown Msheireb, Barahat Msheireb</td>
+                    <td style="padding: 8px 0; color: #4A4D4E;"><a href="https://share.google/wSJgqfIyYScjsx5uo" style="color: #E60000; text-decoration: underline;">Downtown Msheireb, Barahat Msheireb</a></td>
                   </tr>
                 </table>
               </div>
@@ -115,8 +115,8 @@ export async function sendRegistrationEmail({
                 <h3 style="color: #4A4D4E; margin: 0 0 15px 0; font-size: 14px;">Your Registration Details</h3>
                 <table role="presentation" cellspacing="0" cellpadding="0" width="100%">
                   <tr>
-                    <td style="padding: 5px 0; color: #666; font-size: 14px;">Registration ID:</td>
-                    <td style="padding: 5px 0; color: #4A4D4E; font-size: 14px;">${registrationId}</td>
+                    <td style="padding: 5px 0; color: #666; font-size: 14px;">Registration Code:</td>
+                    <td style="padding: 5px 0; color: #4A4D4E; font-size: 14px; font-weight: bold;">${qrCode}</td>
                   </tr>
                   <tr>
                     <td style="padding: 5px 0; color: #666; font-size: 14px;">QID:</td>
@@ -164,6 +164,9 @@ export async function sendRegistrationEmail({
   `;
 
   try {
+    console.log(`[Email] Attempting to send email to: ${to}`);
+    console.log(`[Email] From: ${process.env.EMAIL_FROM || "Sports Village <noreply@vodafone.qa>"}`);
+
     const { data, error } = await resend.emails.send({
       from: process.env.EMAIL_FROM || "Sports Village <noreply@vodafone.qa>",
       to: [to],
@@ -172,7 +175,8 @@ export async function sendRegistrationEmail({
       attachments: [
         {
           filename: "qrcode.png",
-          content: base64Data,
+          content: Buffer.from(base64Data, "base64"),
+          content_type: "image/png",
         },
       ],
       headers: {
@@ -181,13 +185,14 @@ export async function sendRegistrationEmail({
     });
 
     if (error) {
-      console.error("Failed to send email:", error);
+      console.error("[Email] Failed to send email:", error);
       throw error;
     }
 
+    console.log("[Email] Successfully sent! ID:", data?.id);
     return data;
   } catch (error) {
-    console.error("Email sending error:", error);
+    console.error("[Email] Sending error:", error);
     throw error;
   }
 }
