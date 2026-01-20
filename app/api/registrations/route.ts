@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { registrationSchema, searchSchema } from "@/lib/validations";
 import { generateUniqueQRCode, generateQRCodeDataURL } from "@/lib/qr";
-import { sendRegistrationEmail } from "@/lib/email";
+import { sendRegistrationEmail, sendFamilyRegistrationEmail } from "@/lib/email";
 import { auth } from "@/lib/auth";
 import { Prisma } from "@prisma/client";
 
@@ -127,36 +127,44 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // Generate QR code image and send email for primary registrant
+    // Generate QR code images and send email
     try {
-      const qrCodeDataUrl = await generateQRCodeDataURL(qrCode);
+      const primaryQrCodeDataUrl = await generateQRCodeDataURL(qrCode);
 
-      await sendRegistrationEmail({
-        to: registration.email,
-        fullName: registration.fullName,
-        qrCode: registration.qrCode,
-        qrCodeDataUrl,
-        registrationId: registration.id,
-        qid: registration.qid,
-        ageGroup: registration.ageGroup,
-      });
-
-      // Send emails for family members
-      for (const familyReg of familyRegistrations) {
-        try {
-          const familyQrDataUrl = await generateQRCodeDataURL(familyReg.qrCode);
-          await sendRegistrationEmail({
-            to: familyReg.email,
+      if (familyRegistrations.length > 0) {
+        // Family registration - send one consolidated email with all QR codes
+        const familyMembersData = await Promise.all(
+          familyRegistrations.map(async (familyReg) => ({
             fullName: familyReg.fullName,
             qrCode: familyReg.qrCode,
-            qrCodeDataUrl: familyQrDataUrl,
-            registrationId: familyReg.id,
+            qrCodeDataUrl: await generateQRCodeDataURL(familyReg.qrCode),
             qid: familyReg.qid,
             ageGroup: familyReg.ageGroup,
-          });
-        } catch (familyEmailError) {
-          console.error(`Failed to send email for family member ${familyReg.fullName}:`, familyEmailError);
-        }
+          }))
+        );
+
+        await sendFamilyRegistrationEmail({
+          to: registration.email,
+          primaryMember: {
+            fullName: registration.fullName,
+            qrCode: registration.qrCode,
+            qrCodeDataUrl: primaryQrCodeDataUrl,
+            qid: registration.qid,
+            ageGroup: registration.ageGroup,
+          },
+          familyMembers: familyMembersData,
+        });
+      } else {
+        // Single registration - send regular email
+        await sendRegistrationEmail({
+          to: registration.email,
+          fullName: registration.fullName,
+          qrCode: registration.qrCode,
+          qrCodeDataUrl: primaryQrCodeDataUrl,
+          registrationId: registration.id,
+          qid: registration.qid,
+          ageGroup: registration.ageGroup,
+        });
       }
     } catch (emailError) {
       console.error("Failed to send email:", emailError);

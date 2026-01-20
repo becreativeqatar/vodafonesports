@@ -197,6 +197,183 @@ export async function sendRegistrationEmail({
   }
 }
 
+interface FamilyMemberEmailData {
+  fullName: string;
+  qrCode: string;
+  qrCodeDataUrl: string;
+  qid: string;
+  ageGroup: string;
+}
+
+interface SendFamilyRegistrationEmailParams {
+  to: string;
+  primaryMember: FamilyMemberEmailData;
+  familyMembers: FamilyMemberEmailData[];
+}
+
+export async function sendFamilyRegistrationEmail({
+  to,
+  primaryMember,
+  familyMembers,
+}: SendFamilyRegistrationEmailParams) {
+  const resend = getResend();
+
+  if (!resend) {
+    console.warn("Email service not configured - skipping email send");
+    return null;
+  }
+
+  const ageGroupLabels: Record<string, string> = {
+    KIDS: "Kids (Under 12)",
+    YOUTH: "Youth (12-17)",
+    ADULT: "Adult (18-45)",
+    SENIOR: "Senior (45+)",
+  };
+
+  const allMembers = [primaryMember, ...familyMembers];
+  const totalCount = allMembers.length;
+
+  // Generate QR code sections for all members
+  const qrCodeSections = allMembers
+    .map((member, index) => {
+      const maskedQid = `${member.qid.slice(0, 3)}-XXXX-${member.qid.slice(7)}`;
+      const isPrimary = index === 0;
+      return `
+        <div style="text-align: center; margin: 20px 0; padding: 25px; background-color: #f9f9f9; border-radius: 12px; ${!isPrimary ? 'border-top: 2px dashed #e0e0e0; margin-top: 30px;' : ''}">
+          <p style="color: #4A4D4E; font-weight: bold; margin: 0 0 15px 0; font-size: 16px;">${member.fullName}${isPrimary ? ' (Primary)' : ''}</p>
+          <img src="${member.qrCodeDataUrl}" alt="QR Code for ${member.fullName}" style="width: 180px; height: 180px; border: 3px solid #E60000; border-radius: 8px;" />
+          <p style="color: #E60000; font-weight: bold; margin: 12px 0 0 0; font-size: 16px;">${member.qrCode}</p>
+          <p style="color: #666; margin: 8px 0 0 0; font-size: 12px;">QID: ${maskedQid} • ${ageGroupLabels[member.ageGroup] || member.ageGroup}</p>
+        </div>
+      `;
+    })
+    .join("");
+
+  // Generate attachments for all QR codes
+  const attachments = allMembers.map((member, index) => ({
+    filename: `qrcode-${member.fullName.replace(/\s+/g, "-").toLowerCase()}.png`,
+    content: Buffer.from(member.qrCodeDataUrl.split(",")[1], "base64"),
+    content_type: "image/png" as const,
+  }));
+
+  const htmlContent = `
+    <!DOCTYPE html>
+    <html>
+      <head>
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Family Registration Confirmed</title>
+      </head>
+      <body style="margin: 0; padding: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f5f5f5;">
+        <table role="presentation" cellspacing="0" cellpadding="0" width="100%" style="max-width: 600px; margin: 0 auto; background-color: #ffffff;">
+          <!-- Header -->
+          <tr>
+            <td style="background-color: #E60000; padding: 30px 40px; text-align: center;">
+              <h1 style="color: #ffffff; margin: 0; font-size: 24px; font-weight: bold;">Sports Village 2026</h1>
+              <p style="color: #ffffff; margin: 10px 0 0 0; font-size: 14px; opacity: 0.9;">National Sport Day</p>
+            </td>
+          </tr>
+
+          <!-- Content -->
+          <tr>
+            <td style="padding: 40px;">
+              <h2 style="color: #E60000; margin: 0 0 20px 0; font-size: 22px;">Family Registration Confirmed!</h2>
+
+              <p style="color: #4A4D4E; line-height: 1.6; margin: 0 0 20px 0;">
+                Dear <strong>${primaryMember.fullName}</strong>,
+              </p>
+
+              <p style="color: #4A4D4E; line-height: 1.6; margin: 0 0 30px 0;">
+                Thank you for registering your family for the Sports Village event. <strong>${totalCount} registration${totalCount > 1 ? "s have" : " has"}</strong> been confirmed. Please find all QR codes below - each person needs their own QR code for check-in.
+              </p>
+
+              <!-- All QR Codes -->
+              <div style="border: 2px solid #E60000; border-radius: 12px; padding: 20px; margin: 20px 0;">
+                <h3 style="color: #E60000; margin: 0 0 10px 0; font-size: 16px; text-align: center;">Your Family QR Codes (${totalCount})</h3>
+                ${qrCodeSections}
+              </div>
+
+              <!-- Event Details -->
+              <div style="background-color: #f0f0f0; padding: 25px; border-radius: 8px; margin: 30px 0;">
+                <h3 style="color: #E60000; margin: 0 0 15px 0; font-size: 16px;">Event Details</h3>
+                <table role="presentation" cellspacing="0" cellpadding="0" width="100%">
+                  <tr>
+                    <td style="padding: 8px 0; color: #4A4D4E; width: 100px;"><strong>Event:</strong></td>
+                    <td style="padding: 8px 0; color: #4A4D4E;">Sports Village - National Sport Day 2026</td>
+                  </tr>
+                  <tr>
+                    <td style="padding: 8px 0; color: #4A4D4E;"><strong>Date:</strong></td>
+                    <td style="padding: 8px 0; color: #4A4D4E;">Tuesday, 10 February 2026</td>
+                  </tr>
+                  <tr>
+                    <td style="padding: 8px 0; color: #4A4D4E;"><strong>Time:</strong></td>
+                    <td style="padding: 8px 0; color: #4A4D4E;">7:30 AM - 4:30 PM</td>
+                  </tr>
+                  <tr>
+                    <td style="padding: 8px 0; color: #4A4D4E;"><strong>Location:</strong></td>
+                    <td style="padding: 8px 0; color: #4A4D4E;"><a href="https://share.google/wSJgqfIyYScjsx5uo" style="color: #E60000; text-decoration: underline;">Downtown Msheireb, Barahat Msheireb</a></td>
+                  </tr>
+                </table>
+              </div>
+
+              <!-- Instructions -->
+              <div style="background-color: #fff8f8; border-left: 4px solid #E60000; padding: 15px 20px; margin: 30px 0;">
+                <p style="color: #4A4D4E; margin: 0; line-height: 1.6; font-size: 14px;">
+                  <strong>Important:</strong> Each family member must present their own QR code (printed or on phone) at the event entrance. You can print this email or save each QR code image.
+                </p>
+              </div>
+
+              <p style="color: #4A4D4E; line-height: 1.6; margin: 30px 0 0 0; font-size: 14px;">
+                We look forward to seeing your family at the event!
+              </p>
+
+              <p style="color: #4A4D4E; line-height: 1.6; margin: 20px 0 0 0; font-size: 14px;">
+                Best regards,<br/>
+                <strong style="color: #E60000;">Vodafone Qatar</strong>
+              </p>
+            </td>
+          </tr>
+
+          <!-- Footer -->
+          <tr>
+            <td style="background-color: #4A4D4E; padding: 25px 40px; text-align: center;">
+              <p style="color: #ffffff; margin: 0; font-size: 12px; opacity: 0.8;">
+                © 2026 Vodafone Qatar. All rights reserved.
+              </p>
+              <p style="color: #ffffff; margin: 10px 0 0 0; font-size: 12px; opacity: 0.6;">
+                This is an automated message. Please do not reply to this email.
+              </p>
+            </td>
+          </tr>
+        </table>
+      </body>
+    </html>
+  `;
+
+  try {
+    console.log(`[Email] Attempting to send family registration email to: ${to} (${totalCount} members)`);
+
+    const { data, error } = await resend.emails.send({
+      from: process.env.EMAIL_FROM || "Sports Village <noreply@vodafone.qa>",
+      to: [to],
+      subject: `Your Family Registration for Sports Village 2026 is Confirmed! (${totalCount} members)`,
+      html: htmlContent,
+      attachments,
+    });
+
+    if (error) {
+      console.error("[Email] Failed to send family registration email:", error);
+      throw error;
+    }
+
+    console.log("[Email] Family registration email sent successfully! ID:", data?.id);
+    return data;
+  } catch (error) {
+    console.error("[Email] Family registration email sending error:", error);
+    throw error;
+  }
+}
+
 interface SendInviteEmailParams {
   to: string;
   inviterName: string;
