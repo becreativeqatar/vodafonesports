@@ -6,6 +6,8 @@ import { DashboardHeader } from "./dashboard-header";
 import { StatsCards } from "./stats-cards";
 import { RegistrationsChartInteractive } from "./charts/registrations-chart-interactive";
 import { AgeDistributionChartInteractive } from "./charts/age-distribution-chart-interactive";
+import { GenderDistributionChart } from "./charts/gender-distribution-chart";
+import { NationalityDistributionChart } from "./charts/nationality-distribution-chart";
 import { RecentActivity } from "./recent-activity";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
@@ -21,6 +23,14 @@ interface DashboardStats {
     ADULT: number;
     SENIOR: number;
   };
+  byGender: {
+    MALE: number;
+    FEMALE: number;
+  };
+  byNationality: {
+    nationality: string;
+    count: number;
+  }[];
   todayRegistrations: number;
   recentCheckIns: any[];
   registrationsByDay: {
@@ -92,19 +102,25 @@ export function RealtimeDashboard({
     return () => document.removeEventListener("visibilitychange", handleVisibilityChange);
   }, [fetchStats]);
 
-  const handleRefresh = () => {
+  const handleRefresh = useCallback(() => {
     fetchStats(true);
-  };
+  }, [fetchStats]);
 
-  const handleChartDateClick = (fullDate: string) => {
-    // Navigate to registrations filtered by date
+  const handleChartDateClick = useCallback((fullDate: string) => {
     router.push(`/registrations?date=${fullDate}`);
-  };
+  }, [router]);
 
-  const handleAgeGroupClick = (ageGroup: string) => {
-    // Navigate to registrations filtered by age group
+  const handleAgeGroupClick = useCallback((ageGroup: string) => {
     router.push(`/registrations?ageGroup=${ageGroup}`);
-  };
+  }, [router]);
+
+  const handleGenderClick = useCallback((gender: string) => {
+    router.push(`/registrations?gender=${gender}`);
+  }, [router]);
+
+  const handleNationalityClick = useCallback((nationality: string) => {
+    router.push(`/registrations?nationality=${nationality}`);
+  }, [router]);
 
   return (
     <div className="space-y-6">
@@ -124,7 +140,7 @@ export function RealtimeDashboard({
         todayCount={stats.todayRegistrations}
       />
 
-      {/* Charts */}
+      {/* Charts Row 1 */}
       <div className="grid md:grid-cols-2 gap-6">
         <RegistrationsChartInteractive
           data={stats.registrationsByDay}
@@ -133,6 +149,18 @@ export function RealtimeDashboard({
         <AgeDistributionChartInteractive
           data={stats.byAgeGroup}
           onAgeGroupClick={handleAgeGroupClick}
+        />
+      </div>
+
+      {/* Charts Row 2 - Gender & Nationality */}
+      <div className="grid md:grid-cols-2 gap-6">
+        <GenderDistributionChart
+          data={stats.byGender}
+          onGenderClick={handleGenderClick}
+        />
+        <NationalityDistributionChart
+          data={stats.byNationality}
+          onNationalityClick={handleNationalityClick}
         />
       </div>
 

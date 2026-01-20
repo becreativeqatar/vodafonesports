@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef } from "react";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import { Logo } from "@/components/shared/logo";
@@ -13,6 +14,7 @@ import {
   Loader2,
   LogOut,
   RotateCcw,
+  Search,
 } from "lucide-react";
 
 interface ScanResult {
@@ -36,8 +38,10 @@ export function ValidatorScanner({ userName }: ValidatorScannerProps) {
   const [processing, setProcessing] = useState(false);
   const [scanResult, setScanResult] = useState<ScanResult | null>(null);
   const [todayCheckIns, setTodayCheckIns] = useState(0);
+  const [manualCode, setManualCode] = useState("");
   const scannerRef = useRef<any>(null);
   const containerRef = useRef<HTMLDivElement>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
 
   // Fetch today's check-in count
   useEffect(() => {
@@ -161,7 +165,40 @@ export function ValidatorScanner({ userName }: ValidatorScannerProps) {
 
   const scanAgain = () => {
     setScanResult(null);
+    setManualCode("");
     startScanning();
+  };
+
+  const handleManualSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!manualCode || manualCode.length !== 5) {
+      toast({
+        title: "Invalid Code",
+        description: "Please enter a 5-digit code",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    // Stop scanner if running
+    if (scannerRef.current) {
+      try {
+        await scannerRef.current.stop();
+      } catch {
+        // Ignore stop errors
+      }
+    }
+    setScanning(false);
+
+    // Process with SV- prefix
+    const fullCode = `SV-${manualCode}`;
+    await handleScan(fullCode);
+  };
+
+  const handleManualCodeChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    // Only allow digits, max 5 characters
+    const value = e.target.value.replace(/\D/g, "").slice(0, 5);
+    setManualCode(value);
   };
 
   return (
@@ -264,6 +301,40 @@ export function ValidatorScanner({ userName }: ValidatorScannerProps) {
           <p className="text-white/80 text-center mt-4">
             Point camera at QR code
           </p>
+        )}
+
+        {/* Manual Code Entry */}
+        {!scanResult && (
+          <form onSubmit={handleManualSubmit} className="w-full max-w-sm mt-6">
+            <p className="text-white/80 text-center text-sm mb-2">
+              Or enter code manually:
+            </p>
+            <div className="flex gap-2">
+              <div className="flex-1 flex items-center bg-white rounded-lg overflow-hidden">
+                <span className="pl-3 pr-1 text-gray-500 font-mono font-bold">
+                  SV-
+                </span>
+                <Input
+                  ref={inputRef}
+                  type="text"
+                  inputMode="numeric"
+                  pattern="[0-9]*"
+                  placeholder="00000"
+                  value={manualCode}
+                  onChange={handleManualCodeChange}
+                  className="border-0 font-mono text-lg tracking-wider focus-visible:ring-0 pl-0"
+                  maxLength={5}
+                />
+              </div>
+              <Button
+                type="submit"
+                disabled={processing || manualCode.length !== 5}
+                className="bg-white text-vodafone-red hover:bg-gray-100 px-4"
+              >
+                <Search className="h-5 w-5" />
+              </Button>
+            </div>
+          </form>
         )}
       </div>
     </div>

@@ -28,6 +28,7 @@ export const EVENT_INFO = {
   dateFormatted: "Tuesday, 10 February 2026",
   time: "7:30 AM - 4:30 PM",
   location: "Downtown Msheireb, Barahat Msheireb",
+  locationUrl: "https://share.google/wSJgqfIyYScjsx5uo",
   city: "Doha, Qatar",
   maxRegistrations: 6000,
 };

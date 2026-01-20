@@ -61,7 +61,7 @@ function SuccessContent() {
       start: "20260210T073000",
       end: "20260210T163000",
       location: "Downtown Msheireb, Barahat Msheireb, Doha, Qatar",
-      description: `Your registration ID: ${id}\nQR Code: ${qrCode}`,
+      description: `Your registration ID: ${id}\nQR Code: ${qrCode}\n\nLocation: https://share.google/wSJgqfIyYScjsx5uo`,
     };
 
     const url = `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${encodeURIComponent(
@@ -78,7 +78,7 @@ function SuccessContent() {
       try {
         await navigator.share({
           title: "Sports Village 2026",
-          text: `I'm registered for Sports Village - National Sport Day 2026! Join me at Downtown Msheireb, Qatar.`,
+          text: `I'm registered for Sports Village - National Sport Day 2026! Join me at Downtown Msheireb, Qatar. Location: https://share.google/wSJgqfIyYScjsx5uo`,
           url: window.location.origin,
         });
       } catch (error) {
@@ -230,9 +230,14 @@ function SuccessContent() {
                 </div>
                 <div className="flex justify-between">
                   <span className="text-gray-500">Location</span>
-                  <span className="font-medium text-right">
+                  <a
+                    href="https://share.google/wSJgqfIyYScjsx5uo"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="font-medium text-right text-vodafone-red hover:underline"
+                  >
                     Downtown Msheireb, Barahat Msheireb
-                  </span>
+                  </a>
                 </div>
               </div>
             </CardContent>

@@ -4,31 +4,24 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { PieChart, Pie, Cell, ResponsiveContainer, Legend, Tooltip, Sector } from "recharts";
 import { useState, useMemo } from "react";
 
-interface AgeDistributionChartInteractiveProps {
+interface GenderDistributionChartProps {
   data: {
-    KIDS: number;
-    YOUTH: number;
-    ADULT: number;
-    SENIOR: number;
+    MALE: number;
+    FEMALE: number;
   };
-  onAgeGroupClick?: (ageGroup: string) => void;
+  onGenderClick?: (gender: string) => void;
 }
 
 const COLORS = {
-  KIDS: "#FECB00",
-  YOUTH: "#00B0CA",
-  ADULT: "#E60000",
-  SENIOR: "#007C92",
+  MALE: "#00B0CA",
+  FEMALE: "#E60000",
 };
 
 const LABELS = {
-  KIDS: "Kids",
-  YOUTH: "Youth",
-  ADULT: "Adult",
-  SENIOR: "Senior",
+  MALE: "Male",
+  FEMALE: "Female",
 };
 
-// Custom active shape for hover effect
 const renderActiveShape = (props: any) => {
   const {
     cx,
@@ -84,10 +77,10 @@ const renderActiveShape = (props: any) => {
   );
 };
 
-export function AgeDistributionChartInteractive({
+export function GenderDistributionChart({
   data,
-  onAgeGroupClick,
-}: AgeDistributionChartInteractiveProps) {
+  onGenderClick,
+}: GenderDistributionChartProps) {
   const [activeIndex, setActiveIndex] = useState<number | undefined>(undefined);
 
   const chartData = useMemo(() =>
@@ -95,12 +88,12 @@ export function AgeDistributionChartInteractive({
       name: LABELS[key as keyof typeof LABELS],
       value,
       color: COLORS[key as keyof typeof COLORS],
-      ageGroup: key,
+      gender: key,
     })), [data]);
 
   const handleClick = (_: any, index: number) => {
-    if (onAgeGroupClick && chartData[index]) {
-      onAgeGroupClick(chartData[index].ageGroup);
+    if (onGenderClick && chartData[index]) {
+      onGenderClick(chartData[index].gender);
     }
   };
 
@@ -116,10 +109,10 @@ export function AgeDistributionChartInteractive({
     <Card>
       <CardHeader>
         <CardTitle className="flex items-center justify-between">
-          <span>Age Distribution</span>
-          {onAgeGroupClick && (
+          <span>Gender Distribution</span>
+          {onGenderClick && (
             <span className="text-xs font-normal text-gray-400">
-              Click on segment to view details
+              Click to filter
             </span>
           )}
         </CardTitle>
@@ -141,7 +134,7 @@ export function AgeDistributionChartInteractive({
                 onMouseEnter={onPieEnter}
                 onMouseLeave={onPieLeave}
                 onClick={handleClick}
-                style={{ cursor: onAgeGroupClick ? "pointer" : "default" }}
+                style={{ cursor: onGenderClick ? "pointer" : "default" }}
               >
                 {chartData.map((entry, index) => (
                   <Cell key={`cell-${index}`} fill={entry.color} />
@@ -153,11 +146,11 @@ export function AgeDistributionChartInteractive({
               <Legend
                 formatter={(value, entry: any) => (
                   <span
-                    style={{ cursor: onAgeGroupClick ? "pointer" : "default" }}
+                    style={{ cursor: onGenderClick ? "pointer" : "default" }}
                     onClick={() => {
                       const item = chartData.find((d) => d.name === value);
-                      if (item && onAgeGroupClick) {
-                        onAgeGroupClick(item.ageGroup);
+                      if (item && onGenderClick) {
+                        onGenderClick(item.gender);
                       }
                     }}
                   >

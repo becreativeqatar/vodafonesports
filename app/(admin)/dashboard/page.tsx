@@ -5,19 +5,62 @@ import { RealtimeDashboard } from "@/components/admin/realtime-dashboard";
 import { startOfDay, subDays, format } from "date-fns";
 
 async function getStats() {
-  const [totalRegistrations, checkedIn, cancelled] = await Promise.all([
+  const today = startOfDay(new Date());
+  const sevenDaysAgo = subDays(today, 6);
+
+  // Batch all independent queries with Promise.all
+  const [
+    totalRegistrations,
+    checkedIn,
+    cancelled,
+    ageGroupCounts,
+    genderCounts,
+    nationalityCounts,
+    todayRegistrations,
+    recentCheckIns,
+    dailyCounts,
+  ] = await Promise.all([
     db.registration.count(),
     db.registration.count({ where: { status: "CHECKED_IN" } }),
     db.registration.count({ where: { status: "CANCELLED" } }),
+    db.registration.groupBy({
+      by: ["ageGroup"],
+      _count: { ageGroup: true },
+    }),
+    db.registration.groupBy({
+      by: ["gender"],
+      _count: { gender: true },
+    }),
+    db.registration.groupBy({
+      by: ["nationality"],
+      _count: { nationality: true },
+      orderBy: { _count: { nationality: "desc" } },
+      take: 10,
+    }),
+    db.registration.count({
+      where: { createdAt: { gte: today } },
+    }),
+    db.registration.findMany({
+      where: { status: "CHECKED_IN" },
+      orderBy: { checkedInAt: "desc" },
+      take: 5,
+      include: {
+        checkedInByUser: {
+          select: { id: true, name: true },
+        },
+      },
+    }),
+    // Fix N+1: Single query to get registrations grouped by day
+    db.$queryRaw<{ date: Date; count: bigint }[]>`
+      SELECT DATE("createdAt") as date, COUNT(*)::bigint as count
+      FROM "Registration"
+      WHERE "createdAt" >= ${sevenDaysAgo}
+      GROUP BY DATE("createdAt")
+      ORDER BY date ASC
+    `,
   ]);
 
   const pending = totalRegistrations - checkedIn - cancelled;
-
-  // Get count by age group
-  const ageGroupCounts = await db.registration.groupBy({
-    by: ["ageGroup"],
-    _count: { ageGroup: true },
-  });
 
   const byAgeGroup = {
     KIDS: 0,
@@ -30,50 +73,35 @@ async function getStats() {
     byAgeGroup[item.ageGroup] = item._count.ageGroup;
   });
 
-  // Get today's registrations
-  const today = startOfDay(new Date());
-  const todayRegistrations = await db.registration.count({
-    where: {
-      createdAt: { gte: today },
-    },
+  const byGender = {
+    MALE: 0,
+    FEMALE: 0,
+  };
+
+  genderCounts.forEach((item) => {
+    byGender[item.gender] = item._count.gender;
   });
 
-  // Get recent check-ins
-  const recentCheckIns = await db.registration.findMany({
-    where: { status: "CHECKED_IN" },
-    orderBy: { checkedInAt: "desc" },
-    take: 5,
-    include: {
-      checkedInByUser: {
-        select: {
-          id: true,
-          name: true,
-        },
-      },
-    },
+  const byNationality = nationalityCounts.map((item) => ({
+    nationality: item.nationality,
+    count: item._count.nationality,
+  }));
+
+  // Build registrationsByDay from the grouped query results
+  const dailyCountsMap = new Map<string, number>();
+  dailyCounts.forEach((item) => {
+    const dateKey = format(new Date(item.date), "yyyy-MM-dd");
+    dailyCountsMap.set(dateKey, Number(item.count));
   });
 
-  // Get registrations by day for the last 7 days
   const registrationsByDay = [];
   for (let i = 6; i >= 0; i--) {
     const date = subDays(new Date(), i);
-    const dayStart = startOfDay(date);
-    const dayEnd = new Date(dayStart);
-    dayEnd.setDate(dayEnd.getDate() + 1);
-
-    const count = await db.registration.count({
-      where: {
-        createdAt: {
-          gte: dayStart,
-          lt: dayEnd,
-        },
-      },
-    });
-
+    const fullDate = format(date, "yyyy-MM-dd");
     registrationsByDay.push({
       date: format(date, "MMM dd"),
-      fullDate: format(date, "yyyy-MM-dd"),
-      count,
+      fullDate,
+      count: dailyCountsMap.get(fullDate) || 0,
     });
   }
 
@@ -83,6 +111,8 @@ async function getStats() {
     pending,
     cancelled,
     byAgeGroup,
+    byGender,
+    byNationality,
     todayRegistrations,
     recentCheckIns,
     registrationsByDay,

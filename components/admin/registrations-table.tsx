@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback, useRef, memo } from "react";
 import { useRouter } from "next/navigation";
 import {
   Table,
@@ -58,6 +58,91 @@ interface RegistrationsTableProps {
 type SortColumn = "fullName" | "email" | "ageGroup" | "status" | "createdAt";
 type SortOrder = "asc" | "desc";
 
+// Memoized row component to prevent unnecessary re-renders
+interface RegistrationRowProps {
+  reg: Registration;
+  onView: (id: string) => void;
+  onStatusChange: (id: string, status: string) => void;
+  getAgeGroupBadge: (ageGroup: string) => React.ReactNode;
+  getStatusBadge: (status: string) => React.ReactNode;
+}
+
+const RegistrationRow = memo(function RegistrationRow({
+  reg,
+  onView,
+  onStatusChange,
+  getAgeGroupBadge,
+  getStatusBadge,
+}: RegistrationRowProps) {
+  return (
+    <TableRow>
+      <TableCell className="font-medium">{reg.fullName}</TableCell>
+      <TableCell className="font-mono text-sm">
+        {maskQID(reg.qid)}
+      </TableCell>
+      <TableCell>{reg.email}</TableCell>
+      <TableCell>{getAgeGroupBadge(reg.ageGroup)}</TableCell>
+      <TableCell>{getStatusBadge(reg.status)}</TableCell>
+      <TableCell>{formatDate(reg.createdAt)}</TableCell>
+      <TableCell className="text-right">
+        <TooltipProvider>
+          <div className="flex items-center justify-end gap-1">
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={() => onView(reg.id)}
+                  aria-label="View details"
+                >
+                  <Eye className="h-4 w-4" />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>
+                <p>View details</p>
+              </TooltipContent>
+            </Tooltip>
+            {reg.status === "REGISTERED" && (
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={() => onStatusChange(reg.id, "CHECKED_IN")}
+                    aria-label="Check in"
+                  >
+                    <UserCheck className="h-4 w-4 text-secondary-spring-green" />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>
+                  <p>Check in</p>
+                </TooltipContent>
+              </Tooltip>
+            )}
+            {reg.status !== "CANCELLED" && (
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={() => onStatusChange(reg.id, "CANCELLED")}
+                    aria-label="Cancel registration"
+                  >
+                    <X className="h-4 w-4 text-red-500" />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>
+                  <p>Cancel registration</p>
+                </TooltipContent>
+              </Tooltip>
+            )}
+          </div>
+        </TooltipProvider>
+      </TableCell>
+    </TableRow>
+  );
+});
+
 export function RegistrationsTable({
   userRole,
   initialStatus,
@@ -69,7 +154,9 @@ export function RegistrationsTable({
   const [registrations, setRegistrations] = useState<Registration[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
+  const [debouncedSearch, setDebouncedSearch] = useState("");
   const [status, setStatus] = useState(initialStatus || "ALL");
+  const searchTimeout = useRef<NodeJS.Timeout | null>(null);
   const [ageGroup, setAgeGroup] = useState(initialAgeGroup || "ALL");
   const [dateFilter, setDateFilter] = useState(initialDate || "");
   const [page, setPage] = useState(1);
@@ -88,7 +175,7 @@ export function RegistrationsTable({
         sortOrder,
       });
 
-      if (search) params.set("query", search);
+      if (debouncedSearch) params.set("query", debouncedSearch);
       if (status !== "ALL") params.set("status", status);
       if (ageGroup !== "ALL") params.set("ageGroup", ageGroup);
       if (dateFilter) params.set("date", dateFilter);
@@ -110,7 +197,19 @@ export function RegistrationsTable({
     } finally {
       setLoading(false);
     }
-  }, [page, search, status, ageGroup, dateFilter, sortBy, sortOrder, toast]);
+  }, [page, debouncedSearch, status, ageGroup, dateFilter, sortBy, sortOrder, toast]);
+
+  // Debounce search input
+  const handleSearchChange = (value: string) => {
+    setSearch(value);
+    if (searchTimeout.current) {
+      clearTimeout(searchTimeout.current);
+    }
+    searchTimeout.current = setTimeout(() => {
+      setDebouncedSearch(value);
+      setPage(1);
+    }, 300);
+  };
 
   const handleSort = (column: SortColumn) => {
     if (sortBy === column) {
@@ -138,6 +237,15 @@ export function RegistrationsTable({
   useEffect(() => {
     fetchRegistrations();
   }, [fetchRegistrations]);
+
+  // Cleanup timeout on unmount
+  useEffect(() => {
+    return () => {
+      if (searchTimeout.current) {
+        clearTimeout(searchTimeout.current);
+      }
+    };
+  }, []);
 
   const handleExport = async (format: "csv" | "xlsx") => {
     try {
@@ -173,6 +281,16 @@ export function RegistrationsTable({
   };
 
   const handleStatusChange = async (id: string, newStatus: string) => {
+    // Optimistic update - update UI immediately
+    const previousRegistrations = [...registrations];
+    setRegistrations((prev) =>
+      prev.map((reg) =>
+        reg.id === id
+          ? { ...reg, status: newStatus as Registration["status"] }
+          : reg
+      )
+    );
+
     try {
       const response = await fetch(`/api/registrations/${id}`, {
         method: "PATCH",
@@ -186,9 +304,9 @@ export function RegistrationsTable({
         title: "Success",
         description: `Registration ${newStatus === "CHECKED_IN" ? "checked in" : "updated"} successfully`,
       });
-
-      fetchRegistrations();
     } catch (error) {
+      // Revert on error
+      setRegistrations(previousRegistrations);
       toast({
         title: "Error",
         description: "Failed to update registration",
@@ -197,7 +315,7 @@ export function RegistrationsTable({
     }
   };
 
-  const getStatusBadge = (status: string) => {
+  const getStatusBadge = useCallback((status: string) => {
     const variant = {
       REGISTERED: "registered",
       CHECKED_IN: "checkedIn",
@@ -205,12 +323,16 @@ export function RegistrationsTable({
     }[status] as "registered" | "checkedIn" | "cancelled";
 
     return <Badge variant={variant}>{status.replace("_", " ")}</Badge>;
-  };
+  }, []);
 
-  const getAgeGroupBadge = (ageGroup: string) => {
+  const getAgeGroupBadge = useCallback((ageGroup: string) => {
     const variant = ageGroup.toLowerCase() as "kids" | "youth" | "adult" | "senior";
     return <Badge variant={variant}>{ageGroup}</Badge>;
-  };
+  }, []);
+
+  const handleViewRegistration = useCallback((id: string) => {
+    router.push(`/registrations/${id}`);
+  }, [router]);
 
   return (
     <Card>
@@ -223,10 +345,7 @@ export function RegistrationsTable({
               <Input
                 placeholder="Search by name, QID, or email..."
                 value={search}
-                onChange={(e) => {
-                  setSearch(e.target.value);
-                  setPage(1);
-                }}
+                onChange={(e) => handleSearchChange(e.target.value)}
                 className="pl-10"
               />
             </div>
@@ -364,77 +483,14 @@ export function RegistrationsTable({
                 </TableRow>
               ) : (
                 registrations.map((reg) => (
-                  <TableRow key={reg.id}>
-                    <TableCell className="font-medium">{reg.fullName}</TableCell>
-                    <TableCell className="font-mono text-sm">
-                      {maskQID(reg.qid)}
-                    </TableCell>
-                    <TableCell>{reg.email}</TableCell>
-                    <TableCell>{getAgeGroupBadge(reg.ageGroup)}</TableCell>
-                    <TableCell>{getStatusBadge(reg.status)}</TableCell>
-                    <TableCell>{formatDate(reg.createdAt)}</TableCell>
-                    <TableCell className="text-right">
-                      <TooltipProvider>
-                        <div className="flex items-center justify-end gap-1">
-                          <Tooltip>
-                            <TooltipTrigger asChild>
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                onClick={() =>
-                                  router.push(`/registrations/${reg.id}`)
-                                }
-                                aria-label="View details"
-                              >
-                                <Eye className="h-4 w-4" />
-                              </Button>
-                            </TooltipTrigger>
-                            <TooltipContent>
-                              <p>View details</p>
-                            </TooltipContent>
-                          </Tooltip>
-                          {reg.status === "REGISTERED" && (
-                            <Tooltip>
-                              <TooltipTrigger asChild>
-                                <Button
-                                  variant="ghost"
-                                  size="icon"
-                                  onClick={() =>
-                                    handleStatusChange(reg.id, "CHECKED_IN")
-                                  }
-                                  aria-label="Check in"
-                                >
-                                  <UserCheck className="h-4 w-4 text-secondary-spring-green" />
-                                </Button>
-                              </TooltipTrigger>
-                              <TooltipContent>
-                                <p>Check in</p>
-                              </TooltipContent>
-                            </Tooltip>
-                          )}
-                          {reg.status !== "CANCELLED" && (
-                            <Tooltip>
-                              <TooltipTrigger asChild>
-                                <Button
-                                  variant="ghost"
-                                  size="icon"
-                                  onClick={() =>
-                                    handleStatusChange(reg.id, "CANCELLED")
-                                  }
-                                  aria-label="Cancel registration"
-                                >
-                                  <X className="h-4 w-4 text-red-500" />
-                                </Button>
-                              </TooltipTrigger>
-                              <TooltipContent>
-                                <p>Cancel registration</p>
-                              </TooltipContent>
-                            </Tooltip>
-                          )}
-                        </div>
-                      </TooltipProvider>
-                    </TableCell>
-                  </TableRow>
+                  <RegistrationRow
+                    key={reg.id}
+                    reg={reg}
+                    onView={handleViewRegistration}
+                    onStatusChange={handleStatusChange}
+                    getAgeGroupBadge={getAgeGroupBadge}
+                    getStatusBadge={getStatusBadge}
+                  />
                 ))
               )}
             </TableBody>

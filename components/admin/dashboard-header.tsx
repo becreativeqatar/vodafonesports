@@ -35,8 +35,8 @@ export function DashboardHeader({
     };
 
     updateTimeAgo();
-    // Update every 10 seconds for more responsive display
-    const interval = setInterval(updateTimeAgo, 10000);
+    // Update every 60 seconds to reduce unnecessary re-renders
+    const interval = setInterval(updateTimeAgo, 60000);
 
     return () => clearInterval(interval);
   }, [lastUpdated]);

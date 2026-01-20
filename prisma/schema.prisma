@@ -32,6 +32,10 @@ model Registration {
   @@index([createdAt])
   @@index([ageGroup])
   @@index([nationality])
+  // Composite indexes for performance
+  @@index([status, createdAt])     // Dashboard stats queries
+  @@index([status, ageGroup])      // Filtered lists/exports
+  @@index([checkedInAt])           // Recent check-ins sorting
 }
 
 model User {

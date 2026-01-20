@@ -206,9 +206,10 @@ export async function GET(request: NextRequest) {
     const total = await db.registration.count({ where });
 
     // Get registrations with dynamic sorting
+    // Only include checkedInByUser when filtering by CHECKED_IN status
     const registrations = await db.registration.findMany({
       where,
-      include: {
+      include: params.status === "CHECKED_IN" ? {
         checkedInByUser: {
           select: {
             id: true,
@@ -216,7 +217,7 @@ export async function GET(request: NextRequest) {
             email: true,
           },
         },
-      },
+      } : undefined,
       orderBy: { [params.sortBy]: params.sortOrder },
       skip: (params.page - 1) * params.limit,
       take: params.limit,

@@ -53,7 +53,14 @@ export default async function SettingsPage() {
               <MapPin className="h-5 w-5 text-vodafone-red" />
               <div>
                 <p className="text-sm text-gray-500">Location</p>
-                <p className="font-medium">Downtown Msheireb, Barahat Msheireb</p>
+                <a
+                  href="https://share.google/wSJgqfIyYScjsx5uo"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="font-medium text-vodafone-red hover:underline"
+                >
+                  Downtown Msheireb, Barahat Msheireb
+                </a>
               </div>
             </div>
             <Separator />

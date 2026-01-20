@@ -25,10 +25,7 @@ export async function generateQRCodeBuffer(data: string): Promise<Buffer> {
 }
 
 export function generateUniqueQRCode(): string {
-  const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
-  let result = "";
-  for (let i = 0; i < 8; i++) {
-    result += chars.charAt(Math.floor(Math.random() * chars.length));
-  }
-  return `SVE2026-${result}`;
+  // Generate 5 random digits (00000-99999)
+  const code = Math.floor(Math.random() * 100000).toString().padStart(5, "0");
+  return `SV-${code}`;
 }

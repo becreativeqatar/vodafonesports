@@ -43,9 +43,13 @@ export default function LoginPage() {
           description: "Invalid email or password",
           variant: "destructive",
         });
-      } else {
-        router.push("/dashboard");
-        router.refresh();
+        setIsLoading(false);
+        return;
+      }
+
+      if (result?.ok) {
+        // Force a hard navigation to ensure session is picked up
+        window.location.href = "/dashboard";
       }
     } catch (error) {
       toast({
@@ -53,7 +57,6 @@ export default function LoginPage() {
         description: "Something went wrong. Please try again.",
         variant: "destructive",
       });
-    } finally {
       setIsLoading(false);
     }
   };
