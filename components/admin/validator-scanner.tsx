@@ -105,9 +105,16 @@ function ValidatorScannerInner({ userName }: ValidatorScannerProps) {
     return () => { mounted = false; };
   }, [scanResult]);
 
+  // Auto-start camera on mount
   useEffect(() => {
+    // Small delay to ensure DOM is ready
+    const timer = setTimeout(() => {
+      startScanning();
+    }, 500);
+
     // Cleanup on unmount
     return () => {
+      clearTimeout(timer);
       if (scannerRef.current) {
         try {
           scannerRef.current.stop().catch(() => {});
@@ -148,7 +155,12 @@ function ValidatorScannerInner({ userName }: ValidatorScannerProps) {
         { facingMode: "environment" },
         {
           fps: 10,
-          qrbox: { width: 250, height: 250 },
+          // Make qrbox fill 85% of the viewfinder
+          qrbox: (viewfinderWidth: number, viewfinderHeight: number) => {
+            const minEdge = Math.min(viewfinderWidth, viewfinderHeight);
+            const size = Math.floor(minEdge * 0.85);
+            return { width: size, height: size };
+          },
           aspectRatio: 1,
         },
         (decodedText) => {
@@ -238,8 +250,8 @@ function ValidatorScannerInner({ userName }: ValidatorScannerProps) {
   const scanAgain = () => {
     setScanResult(null);
     setManualCode("");
-    setScanning(false);
-    setCameraLoading(false);
+    // Auto-restart camera
+    startScanning();
   };
 
   const handleManualSubmit = async (e: React.FormEvent) => {
