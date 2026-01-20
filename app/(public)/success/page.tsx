@@ -24,6 +24,7 @@ function SuccessContent() {
   const qrCode = searchParams.get("qrCode") || "";
   const fullName = searchParams.get("fullName") || "";
   const email = searchParams.get("email") || "";
+  const familyCount = parseInt(searchParams.get("familyCount") || "0", 10);
 
   // Check if Web Share API is available
   useEffect(() => {
@@ -246,8 +247,11 @@ function SuccessContent() {
               Registration Confirmed!
             </h1>
             <p className="text-gray-600">
-              Thank you for registering, <strong>{fullName}</strong>. Your QR
-              code has been sent to <strong>{email}</strong>.
+              Thank you for registering, <strong>{fullName}</strong>.
+              {familyCount > 0 && (
+                <> You and <strong>{familyCount} family member{familyCount > 1 ? "s" : ""}</strong> are now registered.</>
+              )}
+              {" "}Your QR code{familyCount > 0 ? "s have" : " has"} been sent to <strong>{email}</strong>.
             </p>
           </div>
 

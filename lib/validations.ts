@@ -6,6 +6,22 @@ export const qidSchema = z
   .length(11, "QID must be exactly 11 digits")
   .regex(/^\d{11}$/, "QID must contain only numbers");
 
+// Family member schema (minimal info)
+export const familyMemberSchema = z.object({
+  qid: qidSchema,
+  fullName: z
+    .string()
+    .min(3, "Full name must be at least 3 characters")
+    .max(100, "Full name must be less than 100 characters")
+    .regex(/^[\p{L}\p{M}\s\-']+$/u, "Full name can only contain letters, spaces, hyphens, and apostrophes"),
+  ageGroup: z.enum(["KIDS", "YOUTH", "ADULT", "SENIOR"], {
+    required_error: "Please select an age group",
+  }),
+  gender: z.enum(["MALE", "FEMALE"], {
+    required_error: "Please select a gender",
+  }),
+});
+
 // Registration form schema
 export const registrationSchema = z.object({
   qid: qidSchema,
@@ -28,6 +44,7 @@ export const registrationSchema = z.object({
   gender: z.enum(["MALE", "FEMALE"], {
     required_error: "Please select a gender",
   }),
+  familyMembers: z.array(familyMemberSchema).optional(),
 });
 
 // Login schema
@@ -96,6 +113,7 @@ export const duplicateCheckSchema = z.object({
 });
 
 // Types inferred from schemas
+export type FamilyMemberInput = z.infer<typeof familyMemberSchema>;
 export type RegistrationInput = z.infer<typeof registrationSchema>;
 export type LoginInput = z.infer<typeof loginSchema>;
 export type CreateUserInput = z.infer<typeof createUserSchema>;

@@ -64,19 +64,26 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // Generate unique QR code
-    let qrCode: string;
-    let isUnique = false;
+    // Helper function to generate a unique QR code
+    const generateUniqueQR = async (): Promise<string> => {
+      let qrCode: string;
+      let isUnique = false;
 
-    do {
-      qrCode = generateUniqueQRCode();
-      const existing = await db.registration.findUnique({
-        where: { qrCode },
-      });
-      isUnique = !existing;
-    } while (!isUnique);
+      do {
+        qrCode = generateUniqueQRCode();
+        const existing = await db.registration.findUnique({
+          where: { qrCode },
+        });
+        isUnique = !existing;
+      } while (!isUnique);
 
-    // Create registration
+      return qrCode;
+    };
+
+    // Generate unique QR code for primary registrant
+    const qrCode = await generateUniqueQR();
+
+    // Create primary registration
     const registration = await db.registration.create({
       data: {
         qid: validatedData.qid,
@@ -89,7 +96,38 @@ export async function POST(request: NextRequest) {
       },
     });
 
-    // Generate QR code image and send email
+    // Process family members if present
+    const familyRegistrations = [];
+    if (validatedData.familyMembers && validatedData.familyMembers.length > 0) {
+      for (const member of validatedData.familyMembers) {
+        // Check for existing registration with same QID
+        const existingMemberQid = await db.registration.findUnique({
+          where: { qid: member.qid },
+        });
+
+        if (existingMemberQid) {
+          // Skip this family member if already registered
+          console.log(`Skipping family member with QID ${member.qid} - already registered`);
+          continue;
+        }
+
+        const memberQrCode = await generateUniqueQR();
+        const familyRegistration = await db.registration.create({
+          data: {
+            qid: member.qid,
+            fullName: member.fullName,
+            ageGroup: member.ageGroup,
+            email: validatedData.email, // Same email as primary
+            nationality: validatedData.nationality, // Same nationality as primary
+            gender: member.gender,
+            qrCode: memberQrCode,
+          },
+        });
+        familyRegistrations.push(familyRegistration);
+      }
+    }
+
+    // Generate QR code image and send email for primary registrant
     try {
       const qrCodeDataUrl = await generateQRCodeDataURL(qrCode);
 
@@ -102,6 +140,24 @@ export async function POST(request: NextRequest) {
         qid: registration.qid,
         ageGroup: registration.ageGroup,
       });
+
+      // Send emails for family members
+      for (const familyReg of familyRegistrations) {
+        try {
+          const familyQrDataUrl = await generateQRCodeDataURL(familyReg.qrCode);
+          await sendRegistrationEmail({
+            to: familyReg.email,
+            fullName: familyReg.fullName,
+            qrCode: familyReg.qrCode,
+            qrCodeDataUrl: familyQrDataUrl,
+            registrationId: familyReg.id,
+            qid: familyReg.qid,
+            ageGroup: familyReg.ageGroup,
+          });
+        } catch (familyEmailError) {
+          console.error(`Failed to send email for family member ${familyReg.fullName}:`, familyEmailError);
+        }
+      }
     } catch (emailError) {
       console.error("Failed to send email:", emailError);
       // Don't fail the registration if email fails
@@ -121,9 +177,12 @@ export async function POST(request: NextRequest) {
           qrCode: registration.qrCode,
           status: registration.status,
           createdAt: registration.createdAt,
+          familyCount: familyRegistrations.length,
         },
         message:
-          "Registration successful. Please check your email for confirmation.",
+          familyRegistrations.length > 0
+            ? `Registration successful for you and ${familyRegistrations.length} family member(s). Please check your email for confirmation.`
+            : "Registration successful. Please check your email for confirmation.",
       },
       { status: 201 }
     );
