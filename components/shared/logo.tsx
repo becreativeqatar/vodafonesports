@@ -8,6 +8,7 @@ interface LogoProps {
   variant?: "default" | "white" | "stacked-white";
   className?: string;
   size?: "sm" | "md" | "lg";
+  href?: string | null;
 }
 
 const logoSizes = {
@@ -26,6 +27,7 @@ export function Logo({
   variant = "default",
   className,
   size = "md",
+  href = "/",
 }: LogoProps) {
   const isStacked = variant === "stacked-white";
   const dimensions = isStacked ? stackedLogoSizes[size] : logoSizes[size];
@@ -36,16 +38,24 @@ export function Logo({
     "stacked-white": "/images/vodafone-logo-stacked-white.png",
   }[variant];
 
+  const image = (
+    <Image
+      src={logoSrc}
+      alt="Vodafone"
+      width={dimensions.width}
+      height={dimensions.height}
+      className="object-contain"
+      priority
+    />
+  );
+
+  if (href === null) {
+    return <div className={cn("flex items-center", className)}>{image}</div>;
+  }
+
   return (
-    <Link href="/" className={cn("flex items-center", className)}>
-      <Image
-        src={logoSrc}
-        alt="Vodafone"
-        width={dimensions.width}
-        height={dimensions.height}
-        className="object-contain"
-        priority
-      />
+    <Link href={href} className={cn("flex items-center", className)}>
+      {image}
     </Link>
   );
 }

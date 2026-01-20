@@ -67,9 +67,7 @@ export function Sidebar({ user }: SidebarProps) {
     <div className="w-64 bg-white border-r flex flex-col h-full">
       {/* Logo */}
       <div className="p-6 border-b">
-        <Link href="/dashboard">
-          <Logo />
-        </Link>
+        <Logo href="/dashboard" />
       </div>
 
       {/* Navigation */}

@@ -76,9 +76,7 @@ export function MobileNav({ user }: MobileNavProps) {
     <>
       {/* Mobile Header Bar */}
       <div className="lg:hidden fixed top-0 left-0 right-0 z-40 bg-white border-b px-4 py-3 flex items-center justify-between">
-        <Link href="/dashboard" onClick={handleLinkClick}>
-          <Logo size="sm" />
-        </Link>
+        <Logo size="sm" href="/dashboard" />
         <Button
           variant="ghost"
           size="sm"
