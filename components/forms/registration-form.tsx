@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Button } from "@/components/ui/button";
@@ -293,7 +294,14 @@ export function RegistrationForm() {
             htmlFor="terms"
             className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer"
           >
-            I agree to the terms and conditions{" "}
+            I agree to the{" "}
+            <Link
+              href="/terms"
+              target="_blank"
+              className="text-vodafone-red hover:underline"
+            >
+              terms and conditions
+            </Link>{" "}
             <span className="text-vodafone-red">*</span>
           </label>
           <p className="text-xs text-gray-500">
