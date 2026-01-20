@@ -35,9 +35,9 @@ export default function TermsPage() {
                 <li>Full name</li>
                 <li>Email address</li>
                 <li>Phone number</li>
-                <li>Date of birth</li>
+                <li>Year of birth</li>
                 <li>Gender</li>
-                <li>Company/Organization (optional)</li>
+                <li>Nationality</li>
               </ul>
               <p className="text-gray-600 mb-4">
                 This information is collected solely for event management purposes, including
