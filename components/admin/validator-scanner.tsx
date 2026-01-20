@@ -84,7 +84,9 @@ export function ValidatorScanner({ userName }: ValidatorScannerProps) {
         scannerRef.current = null;
       }
 
-      const { Html5Qrcode } = await import("html5-qrcode");
+      // Dynamic import
+      const html5QrcodeModule = await import("html5-qrcode");
+      const Html5Qrcode = html5QrcodeModule.Html5Qrcode;
 
       if (!containerRef.current) {
         setCameraLoading(false);
@@ -102,38 +104,27 @@ export function ValidatorScanner({ userName }: ValidatorScannerProps) {
       const scanner = new Html5Qrcode(scannerId);
       scannerRef.current = scanner;
 
-      // Get available cameras first (helps with iOS)
-      const cameras = await Html5Qrcode.getCameras();
-
-      if (!cameras || cameras.length === 0) {
-        throw new Error("NotFoundError");
-      }
-
-      // Prefer back camera
-      const backCamera = cameras.find(c =>
-        c.label.toLowerCase().includes("back") ||
-        c.label.toLowerCase().includes("rear") ||
-        c.label.toLowerCase().includes("environment")
-      );
-
-      const cameraId = backCamera?.id || cameras[0].id;
-
+      // Use facingMode instead of camera ID for better iOS compatibility
       await scanner.start(
-        cameraId,
+        { facingMode: "environment" },
         {
           fps: 10,
           qrbox: { width: 250, height: 250 },
+          aspectRatio: 1,
         },
-        async (decodedText) => {
-          try {
-            await scanner.stop();
-          } catch {
-            // Ignore stop errors
-          }
-          setScanning(false);
-          await handleScan(decodedText);
+        (decodedText) => {
+          // Success callback - use sync version to avoid issues
+          scanner.stop().then(() => {
+            setScanning(false);
+            handleScan(decodedText);
+          }).catch(() => {
+            setScanning(false);
+            handleScan(decodedText);
+          });
         },
-        () => {}
+        () => {
+          // Error callback - ignore scan errors
+        }
       );
 
       // Camera started successfully
@@ -144,15 +135,13 @@ export function ValidatorScanner({ userName }: ValidatorScannerProps) {
       setCameraLoading(false);
       setScanning(false);
 
-      let message = "Unable to access camera. Please check permissions.";
+      let message = "Unable to access camera. Use manual entry below.";
       if (error?.message?.includes("NotAllowedError") || error?.name === "NotAllowedError") {
         message = "Camera permission denied. Please allow camera access and refresh.";
       } else if (error?.message?.includes("NotFoundError") || error?.name === "NotFoundError") {
-        message = "No camera found on this device.";
+        message = "No camera found. Use manual entry below.";
       } else if (error?.message?.includes("NotReadableError") || error?.name === "NotReadableError") {
-        message = "Camera is in use by another application.";
-      } else if (error?.message?.includes("NotSupportedError")) {
-        message = "Camera not supported. Please use the manual entry below.";
+        message = "Camera is in use by another app.";
       }
 
       toast({
