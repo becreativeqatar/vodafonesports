@@ -50,7 +50,6 @@ export function QRScanner() {
   const [todayCheckIns, setTodayCheckIns] = useState(0);
   const [cameraError, setCameraError] = useState<string | null>(null);
   const scannerRef = useRef<any>(null);
-  const containerRef = useRef<HTMLDivElement>(null);
 
   // Fetch today's check-in count
   useEffect(() => {
@@ -82,15 +81,8 @@ export function QRScanner() {
     try {
       const { Html5Qrcode } = await import("html5-qrcode");
 
-      if (!containerRef.current) return;
-
-      // Clear any existing content
-      containerRef.current.innerHTML = "";
-
+      // Use fixed ID that's already in the DOM (avoid direct DOM manipulation)
       const scannerId = "qr-reader";
-      const div = document.createElement("div");
-      div.id = scannerId;
-      containerRef.current.appendChild(div);
 
       const scanner = new Html5Qrcode(scannerId);
       scannerRef.current = scanner;
@@ -101,15 +93,15 @@ export function QRScanner() {
           fps: 10,
           qrbox: { width: 250, height: 250 },
         },
-        async (decodedText) => {
+        (decodedText) => {
           // Stop scanning immediately
-          try {
-            await scanner.stop();
-          } catch {
-            // Ignore stop errors
-          }
-          setScanning(false);
-          await handleScan(decodedText);
+          scanner.stop().then(() => {
+            setScanning(false);
+            handleScan(decodedText);
+          }).catch(() => {
+            setScanning(false);
+            handleScan(decodedText);
+          });
         },
         () => {}
       );
@@ -235,12 +227,12 @@ export function QRScanner() {
         <CardContent>
           <div className="space-y-4">
             {/* Scanner Container */}
-            <div
-              ref={containerRef}
-              className="relative w-full aspect-square max-w-md mx-auto bg-gray-100 rounded-lg overflow-hidden"
-            >
+            <div className="relative w-full aspect-square max-w-md mx-auto bg-gray-100 rounded-lg overflow-hidden">
+              {/* Fixed ID div for html5-qrcode - must not be dynamically created */}
+              <div id="qr-reader" className="w-full h-full" />
+
               {!scanning && !scanResult && !processing && (
-                <div className="absolute inset-0 flex flex-col items-center justify-center p-4">
+                <div className="absolute inset-0 flex flex-col items-center justify-center p-4 bg-gray-100">
                   {cameraError ? (
                     <>
                       <AlertCircle className="h-16 w-16 text-red-400 mb-4" />
@@ -257,14 +249,14 @@ export function QRScanner() {
 
               {/* Scanning Guidance Overlay */}
               {scanning && (
-                <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/70 to-transparent p-4 text-white text-center">
+                <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/70 to-transparent p-4 text-white text-center z-10">
                   <p className="text-sm font-medium">Position the QR code within the frame</p>
                   <p className="text-xs opacity-75 mt-1">Move closer if the code is small</p>
                 </div>
               )}
 
               {processing && (
-                <div className="absolute inset-0 bg-black/50 flex items-center justify-center">
+                <div className="absolute inset-0 bg-black/50 flex items-center justify-center z-10">
                   <Loader2 className="h-8 w-8 text-white animate-spin" />
                 </div>
               )}
