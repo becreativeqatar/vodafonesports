@@ -86,25 +86,32 @@ function ValidatorScannerInner({ userName }: ValidatorScannerProps) {
 
   // Fetch today's check-in count
   useEffect(() => {
+    let mounted = true;
     const fetchStats = async () => {
       try {
         const response = await fetch("/api/registrations?status=CHECKED_IN&limit=1");
+        if (!mounted) return;
         const data = await response.json();
-        if (data.success) {
-          setTodayCheckIns(data.data.pagination.total);
+        if (mounted && data.success) {
+          setTodayCheckIns(data.data?.pagination?.total || 0);
         }
       } catch (error) {
         console.error("Failed to fetch stats:", error);
       }
     };
     fetchStats();
+    return () => { mounted = false; };
   }, [scanResult]);
 
   useEffect(() => {
     // Cleanup on unmount
     return () => {
       if (scannerRef.current) {
-        scannerRef.current.stop().catch(() => {});
+        try {
+          scannerRef.current.stop().catch(() => {});
+        } catch {
+          // Ignore
+        }
       }
     };
   }, []);
